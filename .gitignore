@@ -210,3 +210,10 @@ trained_models/random_forest/sandbox/
 CLAUDE.md
 .claude/
 .claude/settings.local.json
+
+
+# Ignore everything in /data
+/data/*
+
+# But keep this specific file
+!/data/ReadMe.txt
