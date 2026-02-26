@@ -48,8 +48,11 @@ full_dataset = torchvision.datasets.INaturalist(root='./data',
                                              target_type="full",
                                              transform = train_transform,
                                              download = True)
+
 """
-Data Categories: Data has a category attribute
+Data is stored in directories. Each directory is named with the category attribute
+Data Category Structure:
+
 00000_Animalia_Annelida_Clitellata_Haplotaxida_Lumbricidae_Lumbricus_terrestris
 
 00000 = Category ID (Numeric)
@@ -61,29 +64,12 @@ Lumbricidae — Family
 Lumbricus — Genus
 terrestris — Species
 
-The category corresponds to a directory inside of which are images of that particular species
 """
 
-# Find category IDs where kingdom is "Plantae"
-plantae_cat_ids = set()
-for index in range(len(full_dataset.all_categories)):
-    category = full_dataset.all_categories[index]
 
-    if'Plantae' in category:
-        plantae_cat_ids.add(index)
-
-# Find dataset indices (list) that belong to those categories
-plantae_indices = [
-    i for i, (cat_id, _) in enumerate(full_dataset.index)
-    if cat_id in plantae_cat_ids
-]
-
-# Create the filtered subset
-plantae_dataset = Subset(full_dataset, plantae_indices)
-
-train_size = int(0.8 * len(plantae_dataset))
-test_size = len(plantae_dataset) - train_size
-train_set, test_set = random_split(plantae_dataset, [train_size, test_size])
+train_size = int(0.8 * len(full_dataset))
+test_size = len(full_dataset) - train_size
+train_set, test_set = random_split(full_dataset, [train_size, test_size])
 
 # Create DataLoaders for efficient batch processing using the whole dataset
 train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
@@ -91,13 +77,3 @@ train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 # Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
-
-"""
-Todo:
-
-1. Download the data
-2. Split out just vermont
-3. Split out just plants ("plantae")
-4. PCA - Giles
-
-"""

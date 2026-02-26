@@ -1,6 +1,36 @@
+# A Place to run filtering on the dataset
+
 import shutil
 from pathlib import Path
+
+import torchvision
+from torch.utils.data import Subset
 from tqdm import tqdm
+from torchvision.datasets import inaturalist
+
+
+# Subset a full inaturalist dataset by a desired kingdom
+def return_specified_kingdom(full_dataset: torchvision.datasets.INaturalist,
+                             kingom_name: str = "plantae") -> Subset[torchvision.datasets.INaturalist]:
+
+    # Find category IDs where kingdom is "Plantae"
+    plantae_cat_ids = set()
+    for index in range(len(full_dataset.all_categories)):
+        category = full_dataset.all_categories[index]
+
+        if'Plantae' in category:
+            plantae_cat_ids.add(index)
+
+    # Find dataset indices (list) that belong to those categories
+    plantae_indices = [
+        i for i, (cat_id, _) in enumerate(full_dataset.index)
+        if cat_id in plantae_cat_ids
+    ]
+
+    # Create the filtered subset
+    plantae_dataset = Subset(full_dataset, plantae_indices)
+
+    return plantae_dataset
 
 # Filter Dataset by Kingdom (Delete Directories Not In Desired Kingdom)
 def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = '/data/2021_train_mini'):
