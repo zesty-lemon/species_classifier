@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from tqdm import tqdm
 
 # Filter Dataset by Kingdom (Delete Directories Not In Desired Kingdom)
 def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = '/data/2021_train_mini'):
@@ -9,16 +10,25 @@ def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = '/data/2
 
     directory_path = Path(DATA_DIR)
 
-    for path in directory_path.iterdir():
-        if path.is_dir():
-            if kingdom_to_keep not in str(path):
-                try:
-                    shutil.rmtree(directory_path)
-                    print(f"Directory '{directory_path}' and all its contents have been removed.")
-                except OSError as e:
-                    # Print an error if it occurs (permission errors)
-                    print(f"Error: {directory_path} : {e.strerror}")
+    # Collect directories for tqdm knows the total
+    subdirs = [p for p in directory_path.iterdir() if p.is_dir()]
 
+    num_directories_kept = 0
+    num_directories_deleted = 0
+
+    for path in tqdm(subdirs, desc="Filtering directories", unit="dir"):
+        if kingdom_to_keep not in str(path):
+            try:
+                shutil.rmtree(path)
+                num_directories_deleted += 1
+            except OSError as e:
+                print(f"Error: {path} : {e.strerror}")
+        else:
+            num_directories_kept += 1
+
+    print("----- Filtering Job Report -----")
+    print(f"Directories Kept:    {num_directories_kept}")
+    print(f"Directories Deleted: {num_directories_deleted}")
     print(f"----- END Filtering By Kingdom = {kingdom_to_keep} -----")
 
 
