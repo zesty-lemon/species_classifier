@@ -4,11 +4,12 @@ import shutil
 from pathlib import Path
 
 import torchvision
-from sympy import Point
+from shapely.geometry import Point
 from torch.utils.data import Subset
 from tqdm import tqdm
 from torchvision.datasets import inaturalist
-# import geopandas as gpd
+import pandas as pd
+import geopandas as gpd
 
 
 # Subset a full inaturalist dataset by a desired kingdom
@@ -35,12 +36,26 @@ def return_specified_kingdom(full_dataset: torchvision.datasets.INaturalist,
     return plantae_dataset
 
 
-# # From https://austinhenley.com/blog/coord2state.html#:~:text=How%20does%20it%20work?,the%20borders%20are%20really%20detailed.
-#
-# def is_in_vermont():
-#     states = gpd.read_file("tl_2024_us_state.shp")
-#     lon, lat = -74.0060, 40.7128  # New York
-#     match = states[states.geometry.contains(Point(lon, lat))].iloc[0]["NAME"]
+# Returns True if a given lat/long is inside Vermont
+# False Otherwise
+def is_in_vermont(lat: float,
+                  lon: float,
+                  filepath : str = 'data/state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp') -> bool:
+    # Get the absolute filepath from the current directory
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    DATA_DIR = PROJECT_ROOT / filepath
+    VT_USPS_CODE = 'VT'
+
+    # Read in US Government Shapefile Containing States bounded by polygons
+    # This shapefile (when used with geopandas library) lets you send in a point
+    # and see which boundary (which state) contains that point
+    states = gpd.read_file(DATA_DIR)
+    point = Point(lon, lat) # Convert lat/long to a point object expected by the geopandas library
+
+    match = states[states.geometry.contains(point)]
+    match_usps_code = match['STUSPS'].iloc[0]
+
+    return VT_USPS_CODE == match_usps_code
 
 
 # Filter Dataset by Kingdom (Delete Directories Not In Desired Kingdom)
@@ -74,5 +89,4 @@ def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = '/data/2
 
 
 if __name__ == "__main__":
-    remove_unwanted_kingdoms(kingdom_to_keep="Plantae",
-                             data_filepath = 'data/2021_train_mini')
+    print(is_in_vermont( 40.7128, -74.0060))
