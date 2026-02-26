@@ -217,3 +217,5 @@ CLAUDE.md
 
 # But keep this specific file
 !/data/ReadMe.txt
+
+!/data/state_boundary_files/

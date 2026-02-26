@@ -9,9 +9,10 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import scripts.file_operations
-import scripts.dataset_filters
+import scripts.dataset_utils
 
-DATA_PATH = 'data/2021_train_mini'
+DATA_PATH = root='/Volumes/giDrive' # './data'
+
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
 if torch.cuda.is_available(): # Prefer CUDA
@@ -43,10 +44,10 @@ test_transform = transforms.Compose([
 ])
 
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-scripts.file_operations.delete_ds_store('data/')
+scripts.file_operations.delete_ds_store(DATA_PATH)
 
 # Download and load the full training dataset (60,000 images)
-full_dataset = torchvision.datasets.INaturalist(root='./data',
+full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              version='2021_train_mini',
                                              target_type="full",
                                              transform = train_transform,
@@ -70,7 +71,7 @@ terrestris — Species
 """
 
 # Subset the dataset to only include plants
-plant_dataset = scripts.dataset_filters.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
+plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
 train_size = int(0.8 * len(plant_dataset))
 test_size = len(plant_dataset) - train_size
@@ -84,3 +85,15 @@ test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
 
 
+"""
+Outstanding:
+1) Figure out how to isolate data to just vermont
+2) Make sure this data is the right input format for the model
+3) Add code to train/evaluate/setup model
+4) Assess performance of normal model (not finetuned) on test set
+5) Fine-Tune model on training set & re-assess performance
+
+Misc:
+1) Some stats of data (how many species, how many data points, etc). maybe PCA/other visualizations
+2) 
+"""
