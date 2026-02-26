@@ -35,7 +35,7 @@ def return_specified_kingdom(full_dataset: torchvision.datasets.INaturalist,
     return plantae_dataset
 
 
-# From https://austinhenley.com/blog/coord2state.html#:~:text=How%20does%20it%20work?,the%20borders%20are%20really%20detailed.
+# # From https://austinhenley.com/blog/coord2state.html#:~:text=How%20does%20it%20work?,the%20borders%20are%20really%20detailed.
 #
 # def is_in_vermont():
 #     states = gpd.read_file("tl_2024_us_state.shp")

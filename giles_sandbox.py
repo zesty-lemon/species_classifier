@@ -11,7 +11,7 @@ import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
 
-DATA_PATH = root='/Volumes/giDrive' # './data'
+DATA_PATH = '/Volumes/giDrive' #'./data'
 
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
@@ -87,10 +87,13 @@ print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(tes
 
 """
 Outstanding:
-1) Figure out how to isolate data to just vermont
-2) Make sure this data is the right input format for the model
+1) Figure out how to isolate data to just vermont (Giles)
+2) Make sure this data is the right input format for the model (what resoluion are the imaes? need downscaling?)
 3) Add code to train/evaluate/setup model
 4) Assess performance of normal model (not finetuned) on test set
+
+Look into fine tuning (ryan) Do we need to do that?
+
 5) Fine-Tune model on training set & re-assess performance
 
 Misc:
