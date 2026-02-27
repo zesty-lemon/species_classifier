@@ -11,8 +11,9 @@ import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
 
-DATA_PATH = '/Volumes/giDrive' #'./data'
-
+# ------------ Initial Setup ------------
+DATA_PATH = '/Volumes/giDrive'
+DATA_PATH = './data'
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
 if torch.cuda.is_available(): # Prefer CUDA
@@ -30,6 +31,7 @@ print(f"Using device: {device}")
 torch.manual_seed(42)
 np.random.seed(42)
 
+# ------------ Load Data ------------
 # Define the data transformations for training: Add RandomHorizontalFlip for augmentation
 train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(), # Randomly flip images to help the model generalize
@@ -46,32 +48,19 @@ test_transform = transforms.Compose([
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
 scripts.file_operations.delete_ds_store(DATA_PATH)
 
-# Download and load the full training dataset (60,000 images)
+# Download and load the full training dataset
 full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              version='2021_train_mini',
                                              target_type="full",
                                              transform = train_transform,
                                              download = False)
 
-"""
-Data is stored in directories. Each directory is named with the category attribute
-Data Category Structure:
-
-00000_Animalia_Annelida_Clitellata_Haplotaxida_Lumbricidae_Lumbricus_terrestris
-
-00000 = Category ID (Numeric)
-Animalia — Kingdom
-Annelida — Phylum
-Clitellata — Class
-Haplotaxida — Order
-Lumbricidae — Family
-Lumbricus — Genus
-terrestris — Species
-
-"""
 
 # Subset the dataset to only include plants
 plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
+
+# # Subset the dataset further to only include Vermont images
+# vermont_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset)
 
 train_size = int(0.8 * len(plant_dataset))
 test_size = len(plant_dataset) - train_size
@@ -83,6 +72,11 @@ train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 # Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
+
+# ------------ Train Model ------------
+
+
+
 
 
 """
