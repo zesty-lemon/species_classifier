@@ -13,6 +13,7 @@ import scripts.dataset_utils
 
 # ------------ Initial Setup ------------
 # DATA_PATH = '/Volumes/giDrive' # External Volume
+
 DATA_PATH = './data' # Local Storage
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
@@ -41,7 +42,7 @@ test_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
-# MEOW MOEW MOEW
+
 # Transform images to resnet standard
 transfer_transform = transforms.Compose([
     transforms.Resize((224,224)), # Resize to ImageNet standard
@@ -286,25 +287,34 @@ class ResNet50_Model(nn.Module):
 
 # Initialize
 print("------ Begin Training Model ------")
-resnet50_exercise = ResNet50_Model(num_classes=num_plant_classes)
+# Evaluation 4: Transfer Learning with Fine-Tuning (ResNet-18)
+# For better accuracy, we use feature_extract=False to perform fine-tuning
+transfer_resnet = get_transfer_model('resnet50', feature_extract=False)
 
-# Count parameters and compare with ResNet-18
-params_res50 = sum(p.numel() for p in resnet50_exercise.parameters())
-print(f"ResNet-50 Parameters: {params_res50:,}")
+# Count trainable parameters
+trainable_params = sum(p.numel() for p in transfer_resnet.parameters() if p.requires_grad)
+total_params = sum(p.numel() for p in transfer_resnet.parameters())
+print(f"Trainable parameters: {trainable_params:,} / {total_params:,}")
 
-# Test: ResNet-50 (Scratch Training)
-train_acc, train_loss, val_acc, val_loss, t = train_model(resnet50_exercise, train_loader, test_loader, epochs=5, lr=0.01, name="ResNet-50")
+# Train the model with a smaller learning rate for fine-tuning
+# We also use a slightly larger number of epochs if needed, but 5 is a good start.
+train_acc, train_loss, val_acc, val_loss, t = train_model(
+    transfer_resnet,
+    transfer_train_loader,
+    transfer_test_loader,
+    epochs=5,
+    lr=0.001, # Smaller LR for fine-tuning to preserve pre-trained features
+    name="Transfer-ResNet50"
+)
 
-print("------ End Training Model ------")
-
-results['ResNet-50'] = {
+# Save results
+results['Transfer-ResNet50'] = {
     'train_acc': train_acc,
     'train_loss': train_loss,
     'val_acc': val_acc,
     'val_loss': val_loss,
-    'params': params_res50,
-    'time': t,
-    'size_mb': params_res50 * 4 / (1024**2)
+    'params': total_params,
+    'time': t
 }
 
 """
