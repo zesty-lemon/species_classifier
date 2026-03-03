@@ -46,7 +46,6 @@ test_transform = transforms.Compose([
 # Transform images to resnet standard
 transfer_transform = transforms.Compose([
     transforms.Resize((224,224)), # Resize to ImageNet standard
-    transforms.Grayscale(num_output_channels=3), # Convert to 3-channel RGB
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) # ImageNet stats
@@ -76,7 +75,7 @@ print(f"Num Classes: {num_plant_classes}")
 
 train_size = int(0.8 * len(flat_dataset))
 test_size = len(flat_dataset) - train_size
-train_set, test_set = random_split(flat_dataset, [train_size, test_size])
+transfer_train_set, transfer_test_set = random_split(flat_dataset, [train_size, test_size])
 
 # train_size = int(0.25 * len(flat_dataset))
 # test_size = int(0.1 * len(flat_dataset))
@@ -84,11 +83,10 @@ train_set, test_set = random_split(flat_dataset, [train_size, test_size])
 # train_set, test_set, junk_set = random_split(flat_dataset, [train_size, test_size, junk_size])
 
 # Create DataLoaders for efficient batch processing using the whole dataset
-train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
+transfer_train_loader = DataLoader(transfer_train_set, batch_size=64, shuffle=True) # Smaller batch size due to larger images
 # Test loader uses the test set for final evaluation
-test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
-# Print dataset sizes to verify loading
-print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
+transfer_test_loader = DataLoader(transfer_test_set, batch_size=64, shuffle=False)# Print dataset sizes to verify loading
+print(f"Dataset initialization complete. Train: {len(transfer_train_set)}, Test: {len(transfer_test_set)}")
 print("------ End Loading Data ------")
 
 # ------------ Train Model ------------
@@ -163,133 +161,68 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
         -1], duration
 
 
-class BottleNeck_Block(nn.Module):
+def get_transfer_model(model_name='resnet18', num_classes=10, feature_extract=True, weights_name='DEFAULT'):
     """
-    Bottleneck Block for ResNet-50.
-    Structure: Conv1x1(reduce) -> Conv3x3 -> Conv1x1(expand) -> skip connection
+    A generalized function to perform transfer learning on any torchvision model.
+    1. Loads pre-trained weights.
+    2. Freezes the backbone (optional).
+    3. Replaces the final classifier for the target number of classes.
+
+    NOTE: Since our data pipeline converts grayscale to 3-channel RGB using
+    transforms.Grayscale(num_output_channels=3), we do NOT modify the input layer.
+    The pre-trained weights work perfectly with 3-channel input.
     """
-    expansion = 4
+    # 1. Dynamically load the model from torchvision.models
+    if hasattr(models, model_name):
+        model_func = getattr(models, model_name)
+        # IMPORTANT: For GoogLeNet, we must set transform_input=False
+        # because it expects 3-channel ImageNet normalization by default.
+        if model_name == 'googlenet':
+            model = model_func(weights=weights_name, transform_input=False)
+        else:
+            model = model_func(weights=weights_name)
+    else:
+        raise ValueError(f"Model {model_name} not found in torchvision.models")
 
-    def __init__(self, in_channels, channels, stride=1, expansion=expansion):
-        super(BottleNeck_Block, self).__init__()
-        # --- Convolution Layers ---
-        # Conv1: 1x1
-        self.conv1 = nn.Conv2d(in_channels, channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.bn1 = nn.BatchNorm2d(channels)
+    # 2. Freeze all parameters initially
+    for param in model.parameters():
+        param.requires_grad = False
 
-        # Conv2: 3x3, with stride parameter
-        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channels)
+    # 3. Keep the first convolutional layer unchanged
+    # Since our data pipeline converts grayscale images to 3-channel RGB,
+    # the pre-trained first layer (which expects 3 channels) works perfectly.
+    # This preserves all the pre-trained knowledge from ImageNet without any adaptation.
 
-        # Conv3: 1x1, expand to channels * expansion
-        self.conv3 = nn.Conv2d(channels, channels * expansion, kernel_size=1, stride=1, padding=0, bias=False)
-        self.bn3 = nn.BatchNorm2d(channels * expansion)
+    # 4. Replace the final classifier (the 'head')
+    if hasattr(model, 'fc'):  # ResNet, GoogLeNet
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, num_classes)
+        model.fc.weight.requires_grad = True
+        model.fc.bias.requires_grad = True
+    elif hasattr(model, 'classifier'):  # VGG
+        if isinstance(model.classifier, nn.Sequential):
+            num_ftrs = model.classifier[-1].in_features
+            model.classifier[-1] = nn.Linear(num_ftrs, num_classes)
+            model.classifier[-1].weight.requires_grad = True
+            model.classifier[-1].bias.requires_grad = True
+        else:
+            num_ftrs = model.classifier.in_features
+            model.classifier = nn.Linear(num_ftrs, num_classes)
+            model.classifier.weight.requires_grad = True
+            model.classifier.bias.requires_grad = True
 
-        # --- ReLU Layer ---
-        self.relu = nn.ReLU(inplace=True)
+    # 5. If not feature extracting, unfreeze the whole model (Fine-tuning)
+    if not feature_extract:
+        for param in model.parameters():
+            param.requires_grad = True
 
-        # Default: Skip Connection (identity)
-        self.shortcut = nn.Identity()
-
-        # 1x1 conv + bn if dimensions change
-        # Adjust shortcut if dimensions change
-        if stride != 1 or in_channels != channels * expansion:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, channels * expansion, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(channels * expansion)
-            )
-
-    # Forward Pass
-    def forward(self, x):
-        identity = self.shortcut(x)
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
-
-        out += identity
-        out = self.relu(out)
-
-        return out
-
-
-class ResNet50_Model(nn.Module):
-    """
-    ResNet-50 with Bottleneck blocks. Configuration: [3, 4, 6, 3]
-    """
-
-    def __init__(self, num_classes=10):
-        super(ResNet50_Model, self).__init__()
-
-        # ===== 1. Initial Convolution (Stem) =====
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
-
-        # ===== 2. Max Pooling =====
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-
-        # ===== 3. Residual Stages =====
-        # ResNet-50 configuration: [3, 4, 6, 3] blocks per stage
-        self.layer1 = self._make_layer(in_channels=64, channels=64, blocks=3, stride=1)
-        self.layer2 = self._make_layer(in_channels=256, channels=128, blocks=4, stride=2)
-        self.layer3 = self._make_layer(in_channels=512, channels=256, blocks=6, stride=2)
-        self.layer4 = self._make_layer(in_channels=1024, channels=512, blocks=3, stride=2)
-
-        # ===== 4. Classification Head =====
-        # Global Average Pooling: reduces any spatial size to 1x1
-        # This replaces heavy FC layers (like in VGG) and adds translation invariance
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        # Final classifier: 512 features -> num_classes
-        self.fc = nn.Linear(2048, num_classes)
-
-    def _make_layer(self, in_channels, channels, blocks, stride=1):
-        """
-        Create a layer with BottleneckBlock_Exercise blocks.
-        First block uses stride, rest use stride=1.
-        """
-        layers = []
-        # First block: handles channel change and optional downsampling
-        layers.append(BottleNeck_Block(in_channels=in_channels, channels=channels, stride=stride))
-
-        # Remaining blocks: input channels = output channels of previous block (channels * expansion)
-        for _ in range(1, blocks):
-            layers.append(BottleNeck_Block(in_channels=channels * BottleNeck_Block.expansion,
-                                           channels=channels, stride=1))
-        return nn.Sequential(*layers)
-
-    def forward(self, x):
-        # Stem: Initial feature extraction
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.maxpool(x)
-
-        # Four residual stages
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        # Global average pooling + flatten
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-
-        # Classifier
-        x = self.fc(x)
-        return x
-
+    return model
 
 # Initialize
 print("------ Begin Training Model ------")
 # Evaluation 4: Transfer Learning with Fine-Tuning (ResNet-18)
 # For better accuracy, we use feature_extract=False to perform fine-tuning
-transfer_resnet = get_transfer_model('resnet50', feature_extract=False)
+transfer_resnet = get_transfer_model('resnet50', num_classes=num_plant_classes, feature_extract=True)
 
 # Count trainable parameters
 trainable_params = sum(p.numel() for p in transfer_resnet.parameters() if p.requires_grad)
@@ -317,20 +250,4 @@ results['Transfer-ResNet50'] = {
     'time': t
 }
 
-"""
-Outstanding:
-1) Done ---- Figure out how to isolate data to just vermont (Giles)
-2) Make sure this data is the right input format for the model (what resoluion are the imaes? need downscaling?)
-3) Add code to train/evaluate/setup model
-4) Assess performance of normal model (not finetuned) on test set
-5) STRATIFY test/train splits
-6) Fix issues with nested subsets. This is so messy. Is there a way to just unnest them all every time?
-
-Look into fine tuning (ryan) Do we need to do that?
-
-5) Fine-Tune model on training set & re-assess performance
-
-Misc:
-1) Some stats of data (how many species, how many data points, etc). maybe PCA/other visualizations
-2) 
-"""
+print(results)
