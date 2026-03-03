@@ -85,6 +85,22 @@ test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
 Outstanding:
 1) Figure out how to isolate data to just vermont (Giles)

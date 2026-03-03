@@ -13,7 +13,7 @@ import scripts.dataset_utils
 
 # ------------ Initial Setup ------------
 DATA_PATH = '/Volumes/giDrive'
-DATA_PATH = './data'
+# DATA_PATH = './data'
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
 if torch.cuda.is_available(): # Prefer CUDA
@@ -55,7 +55,6 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              transform = train_transform,
                                              download = False)
 
-
 # Subset the dataset to only include plants
 plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
@@ -74,17 +73,13 @@ test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
 
 # ------------ Train Model ------------
-
-
-
-
-
 """
 Outstanding:
-1) Figure out how to isolate data to just vermont (Giles)
+1) Done ---- Figure out how to isolate data to just vermont (Giles)
 2) Make sure this data is the right input format for the model (what resoluion are the imaes? need downscaling?)
 3) Add code to train/evaluate/setup model
 4) Assess performance of normal model (not finetuned) on test set
+5) 
 
 Look into fine tuning (ryan) Do we need to do that?
 
