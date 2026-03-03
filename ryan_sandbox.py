@@ -30,6 +30,9 @@ print(f"Using device: {device}")
 torch.manual_seed(42)
 np.random.seed(42)
 
+# Initialize a dictionary to store and compare results from different experiments
+results = {}
+
 # Define the data transformations for training: Add RandomHorizontalFlip for augmentation
 train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(), # Randomly flip images to help the model generalize
