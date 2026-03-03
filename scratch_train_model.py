@@ -75,9 +75,9 @@ print(f"Num Classes: {num_plant_classes}")
 train_size = int(0.8 * len(flat_dataset))
 test_size = len(flat_dataset) - train_size
 train_set, test_set = random_split(flat_dataset, [train_size, test_size])
-
-# train_size = int(0.25 * len(flat_dataset))
-# test_size = int(0.1 * len(flat_dataset))
+#
+# train_size = int(0.01 * len(flat_dataset))
+# test_size = int(0.01 * len(flat_dataset))
 # junk_size = len(flat_dataset) - train_size - test_size
 # train_set, test_set, junk_set = random_split(flat_dataset, [train_size, test_size, junk_size])
 
@@ -157,8 +157,36 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
     duration = time.time() - start_time
     print(f"{name} - Final Accuracy: {history['val_acc'][-1]:.2f}%, Time: {duration:.2f}s")
 
-    return history['train_acc'][-1], history['train_loss'][-1], history['val_acc'][-1], history['val_loss'][
-        -1], duration
+    duration = time.time() - start_time
+    print(f"{name} — Final Val Acc: {history['val_acc'][-1]:.2f}%, Time: {duration:.2f}s")
+    return history, duration
+
+
+def plot_training_curves(history, name="Model"):
+    epochs = range(1, len(history["train_loss"]) + 1)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # --- Loss ---
+    ax1.plot(epochs, history["train_loss"], "o-", label="Train Loss")
+    ax1.plot(epochs, history["val_loss"], "s-", label="Val Loss")
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Loss")
+    ax1.set_title(f"{name} — Loss per Epoch")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    # --- Accuracy ---
+    ax2.plot(epochs, history["train_acc"], "o-", label="Train Acc")
+    ax2.plot(epochs, history["val_acc"], "s-", label="Val Acc")
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Accuracy (%)")
+    ax2.set_title(f"{name} — Accuracy per Epoch")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
 
 
 class BottleNeck_Block(nn.Module):
@@ -292,19 +320,11 @@ params_res50 = sum(p.numel() for p in resnet50_exercise.parameters())
 print(f"ResNet-50 Parameters: {params_res50:,}")
 
 # Test: ResNet-50 (Scratch Training)
-train_acc, train_loss, val_acc, val_loss, t = train_model(resnet50_exercise, train_loader, test_loader, epochs=5, lr=0.01, name="ResNet-50")
+history, duration = train_model(resnet50_exercise, train_loader, test_loader, epochs=15, lr=0.01, name="ResNet-50")
 
 print("------ End Training Model ------")
 
-results['ResNet-50'] = {
-    'train_acc': train_acc,
-    'train_loss': train_loss,
-    'val_acc': val_acc,
-    'val_loss': val_loss,
-    'params': params_res50,
-    'time': t,
-    'size_mb': params_res50 * 4 / (1024**2)
-}
+plot_training_curves(history, name="ResNet50 - Scratch Trained")
 
 """
 Outstanding:

@@ -73,14 +73,14 @@ num_plant_classes = flat_dataset.num_classes
 
 print(f"Num Classes: {num_plant_classes}")
 
-train_size = int(0.8 * len(flat_dataset))
-test_size = len(flat_dataset) - train_size
-transfer_train_set, transfer_test_set = random_split(flat_dataset, [train_size, test_size])
+# train_size = int(0.8 * len(flat_dataset))
+# test_size = len(flat_dataset) - train_size
+# transfer_train_set, transfer_test_set = random_split(flat_dataset, [train_size, test_size])
 
-# train_size = int(0.25 * len(flat_dataset))
-# test_size = int(0.1 * len(flat_dataset))
-# junk_size = len(flat_dataset) - train_size - test_size
-# train_set, test_set, junk_set = random_split(flat_dataset, [train_size, test_size, junk_size])
+train_size = int(0.001 * len(flat_dataset))
+test_size = int(0.001 * len(flat_dataset))
+junk_size = len(flat_dataset) - train_size - test_size
+transfer_train_set, transfer_test_set, junk_set = random_split(flat_dataset, [train_size, test_size, junk_size])
 
 # Create DataLoaders for efficient batch processing using the whole dataset
 transfer_train_loader = DataLoader(transfer_train_set, batch_size=64, shuffle=True) # Smaller batch size due to larger images
@@ -155,11 +155,35 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
         history['val_acc'].append(epoch_val_acc)
 
     duration = time.time() - start_time
-    print(f"{name} - Final Accuracy: {history['val_acc'][-1]:.2f}%, Time: {duration:.2f}s")
+    print(f"{name} — Final Val Acc: {history['val_acc'][-1]:.2f}%, Time: {duration:.2f}s")
+    return history, duration
 
-    return history['train_acc'][-1], history['train_loss'][-1], history['val_acc'][-1], history['val_loss'][
-        -1], duration
 
+def plot_training_curves(history, name="Model"):
+    epochs = range(1, len(history["train_loss"]) + 1)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # --- Loss ---
+    ax1.plot(epochs, history["train_loss"], "o-", label="Train Loss")
+    ax1.plot(epochs, history["val_loss"], "s-", label="Val Loss")
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Loss")
+    ax1.set_title(f"{name} — Loss per Epoch")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    # --- Accuracy ---
+    ax2.plot(epochs, history["train_acc"], "o-", label="Train Acc")
+    ax2.plot(epochs, history["val_acc"], "s-", label="Val Acc")
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Accuracy (%)")
+    ax2.set_title(f"{name} — Accuracy per Epoch")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
 
 def get_transfer_model(model_name='resnet18', num_classes=10, feature_extract=True, weights_name='DEFAULT'):
     """
@@ -231,7 +255,7 @@ print(f"Trainable parameters: {trainable_params:,} / {total_params:,}")
 
 # Train the model with a smaller learning rate for fine-tuning
 # We also use a slightly larger number of epochs if needed, but 5 is a good start.
-train_acc, train_loss, val_acc, val_loss, t = train_model(
+history, duration = train_model(
     transfer_resnet,
     transfer_train_loader,
     transfer_test_loader,
@@ -240,14 +264,4 @@ train_acc, train_loss, val_acc, val_loss, t = train_model(
     name="Transfer-ResNet50"
 )
 
-# Save results
-results['Transfer-ResNet50'] = {
-    'train_acc': train_acc,
-    'train_loss': train_loss,
-    'val_acc': val_acc,
-    'val_loss': val_loss,
-    'params': total_params,
-    'time': t
-}
-
-print(results)
+plot_training_curves(history, name="ResNet50 - Fine Tuned")
