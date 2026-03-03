@@ -5,13 +5,53 @@ from pathlib import Path
 
 import torchvision
 from shapely.geometry import Point
-from torch.utils.data import Subset
+from torch.utils.data import Dataset, Subset
 from tqdm import tqdm
 from torchvision.datasets import inaturalist
 import pandas as pd
 import geopandas as gpd
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
+
+# Subsets of Torchvision datasets are disgusting
+# they contain an index and a link to the original full dataset
+# but subsetting a subset makes a link to the subset which links to the original set
+# this becomes DISGUSTING almost immediately.
+# this method is designed to fix that
+class FlatDataset(Dataset):
+    """Unwraps nested Subsets into a flat dataset with contiguous integer labels."""
+
+    def __init__(self, subset):
+        # Resolve all Subset layers down to the base INaturalist dataset
+        indices = list(range(len(subset)))
+        ds = subset
+        while isinstance(ds, Subset):
+            indices = [ds.indices[i] for i in indices]
+            ds = ds.dataset
+
+        self.base_dataset = ds
+        self.indices = indices
+
+        # Build a mapping from sparse cat_ids to contiguous [0, num_classes-1]
+        cat_ids = set()
+        for idx in self.indices:
+            cat_id, _ = ds.index[idx]
+            cat_ids.add(cat_id)
+
+        self.cat_id_to_label = {cat_id: i for i, cat_id in enumerate(sorted(cat_ids))}
+        self.label_to_category = {i: ds.all_categories[cat_id] for cat_id, i in self.cat_id_to_label.items()}
+        self.num_classes = len(self.cat_id_to_label)
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        real_idx = self.indices[idx]
+        cat_id, _ = self.base_dataset.index[real_idx]
+        image, _ = self.base_dataset[real_idx]
+        label = self.cat_id_to_label[cat_id]
+        return image, label
+
 
 def convert_dms_to_decimal(dms_tuple: tuple, ref: str) -> float | None:
     """Convert (degrees, minutes, seconds) + reference to decimal degrees."""
@@ -23,7 +63,6 @@ def convert_dms_to_decimal(dms_tuple: tuple, ref: str) -> float | None:
         return decimal
     except (ValueError, TypeError):
         return None
-
 
 
 # Subset a full inaturalist dataset by a desired kingdom
@@ -135,6 +174,7 @@ def get_vermont_indices(dataset,
 def return_vermont_images(dataset):
     """Filter dataset indices to only images geolocated in Vermont."""
     print("----- BEGIN filtering dataset to only Vermont -----")
+    print(" NOTE TO DEVELOPER!!!!!!!!! \n MAKE SURE YOU FIX THE CODE TO GRAB CLASS LABELS - THE SUBSET OBJECT WILL BREAK THIS")
     vermont_indices = []
 
     vermont_indices = get_vermont_indices(dataset=dataset)
