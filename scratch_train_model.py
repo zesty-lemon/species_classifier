@@ -75,11 +75,6 @@ print(f"Num Classes: {num_plant_classes}")
 train_size = int(0.8 * len(flat_dataset))
 test_size = len(flat_dataset) - train_size
 train_set, test_set = random_split(flat_dataset, [train_size, test_size])
-#
-# train_size = int(0.01 * len(flat_dataset))
-# test_size = int(0.01 * len(flat_dataset))
-# junk_size = len(flat_dataset) - train_size - test_size
-# train_set, test_set, junk_set = random_split(flat_dataset, [train_size, test_size, junk_size])
 
 # Create DataLoaders for efficient batch processing using the whole dataset
 train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
@@ -186,6 +181,7 @@ def plot_training_curves(history, name="Model"):
     ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
+    plt.savefig(f"{name.replace(' ', '_')}_training_curves.png", dpi=150)
     plt.show()
 
 
