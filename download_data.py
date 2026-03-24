@@ -11,6 +11,14 @@ import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
 
+"""
+Downloading the data takes a long time
+This standalone script will pull from torchvision
+You can run it in the background (from terminal) while doing other work
+
+"""
+
+
 # ------------ Initial Setup ------------
 # DATA_PATH = '/Volumes/giDrive' # External Volume
 DATA_PATH = './data' # Local Storage
