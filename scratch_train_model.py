@@ -137,12 +137,20 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
             optimizer.step()
 
             running_loss += loss.item()
-            _, predicted = torch.max(outputs.data, 1)
+
+            # _, predicted = torch.max(outputs.data, 1)
+            # correct += (predicted == labels).sum().item()
+
+            # top k outputs instead of 1
+            _, predicted = torch.topk(outputs.data, 5, dim=1)
+            # correct if predicted is in top k outputs
+            correct_top5 += (predicted == labels.view(-1, 1)).sum().item()
+
             total += labels.size(0)
-            correct += (predicted == labels).sum().item()
 
         train_loss = running_loss / len(train_loader)
-        train_acc = 100 * correct / total
+        # train_acc = 100 * correct / total
+        train_acc_top5 = 100 * correct_top5 / total
 
         # --- Validation Phase ---
         model.eval()
@@ -156,9 +164,16 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
                 outputs = model(images)
                 loss = criterion(outputs, labels)
                 val_loss += loss.item()
-                _, predicted = torch.max(outputs.data, 1)
+                
+                # _, predicted = torch.max(outputs.data, 1)
+                # correct += (predicted == labels).sum().item()
+                
+                # top k outputs instead of 1
+                _, predicted = torch.topk(outputs.data, 5, dim=1)
+                # correct if predicted is in top k outputs
+                correct_top5 += (predicted == labels.view(-1, 1)).sum().item()
+
                 total += labels.size(0)
-                correct += (predicted == labels).sum().item()
 
         epoch_val_loss = val_loss / len(test_loader)
         epoch_val_acc = 100 * correct / total
