@@ -316,7 +316,7 @@ params_res50 = sum(p.numel() for p in resnet50_exercise.parameters())
 print(f"ResNet-50 Parameters: {params_res50:,}")
 
 # Test: ResNet-50 (Scratch Training)
-history, duration = train_model(resnet50_exercise, train_loader, test_loader, epochs=15, lr=0.01, name="ResNet-50")
+history, duration = train_model(resnet50_exercise, train_loader, test_loader, epochs=10, lr=0.01, name="ResNet-50")
 
 print("------ End Training Model ------")
 
