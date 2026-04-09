@@ -21,7 +21,7 @@ You can run it in the background (from terminal) while doing other work
 
 # ------------ Initial Setup ------------
 # DATA_PATH = '/Volumes/giDrive' # External Volume
-DATA_PATH = './data' # Local Storage
+DATA_PATH = '../data'  # Local Storage
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
 if torch.cuda.is_available(): # Prefer CUDA
