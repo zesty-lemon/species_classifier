@@ -101,4 +101,3 @@ ax.grid(axis="y", alpha=0.3)
 plt.tight_layout()
 plt.savefig(os.path.join(REPORT_DIRECTORY, f"{CURRENT_DATASET_NAME}_class_distribution.png"), dpi=150)
 plt.show()
-

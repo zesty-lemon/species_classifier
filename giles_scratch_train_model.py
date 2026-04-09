@@ -343,21 +343,3 @@ history, duration = train_model(resnet50_exercise, train_loader, test_loader, ep
 print("------ End Training Model ------")
 
 plot_training_curves(history, name="ResNet50 - Scratch Trained")
-
-"""
-Outstanding:
-1) Done ---- Figure out how to isolate data to just vermont (Giles)
-2) Make sure this data is the right input format for the model (what resoluion are the imaes? need downscaling?)
-3) Add code to train/evaluate/setup model
-4) Assess performance of normal model (not finetuned) on test set
-5) STRATIFY test/train splits
-6) Fix issues with nested subsets. This is so messy. Is there a way to just unnest them all every time?
-
-Look into fine tuning (ryan) Do we need to do that?
-
-5) Fine-Tune model on training set & re-assess performance
-
-Misc:
-1) Some stats of data (how many species, how many data points, etc). maybe PCA/other visualizations
-2) 
-"""
