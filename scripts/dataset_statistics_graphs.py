@@ -15,9 +15,10 @@ This script loads the dataset, filters it down to just vermont, gets some statis
 and then saves a report to the /graphs_and_stats directory
 """
 # ------------ Initial Setup ------------
-CURRENT_DATASET_NAME = c.FULL_DATASET
-DATA_PATH = str(Path(__file__).resolve().parent.parent.parent / "data")
+CURRENT_DATASET_NAME = c.MINI_DATASET
+DATA_PATH = str(Path(__file__).resolve().parent.parent / "data")
 REPORT_DIRECTORY = str(Path(__file__).resolve().parent.parent / "graphs_and_stats")
+
 TOO_FEW_THRESHOLD = 10
 # ------------ Load Data ------------
 print("------ Begin Loading Data ------")

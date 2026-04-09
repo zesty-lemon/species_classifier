@@ -119,7 +119,7 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
     start_time = time.time()
 
     # Metrics to track
-    history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
+    history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': [], 'val_top5_acc': []}
 
     for epoch in range(epochs):
         # --- Training Phase ---
@@ -148,6 +148,7 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
         model.eval()
         val_loss = 0.0
         correct = 0
+        top5_correct = 0
         total = 0
 
         with torch.no_grad():
@@ -159,23 +160,24 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
+                _, top5_pred = outputs.topk(5, dim=1)
+                top5_correct += (top5_pred == labels.unsqueeze(1)).any(dim=1).sum().item()
 
         epoch_val_loss = val_loss / len(test_loader)
         epoch_val_acc = 100 * correct / total
+        epoch_val_top5_acc = 100 * top5_correct / total
 
         print(
-            f"  Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}%")
+            f"  Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}% | Val Top-5 Acc: {epoch_val_top5_acc:.2f}%")
 
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
         history['val_loss'].append(epoch_val_loss)
         history['val_acc'].append(epoch_val_acc)
+        history['val_top5_acc'].append(epoch_val_top5_acc)
 
     duration = time.time() - start_time
-    print(f"{name} - Final Accuracy: {history['val_acc'][-1]:.2f}%, Time: {duration:.2f}s")
-
-    duration = time.time() - start_time
-    print(f"{name} — Final Val Acc: {history['val_acc'][-1]:.2f}%, Time: {duration:.2f}s")
+    print(f"{name} — Final Val Acc: {history['val_acc'][-1]:.2f}%, Val Top-5 Acc: {history['val_top5_acc'][-1]:.2f}%, Time: {duration:.2f}s")
     return history, duration
 
 
