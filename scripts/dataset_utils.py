@@ -89,6 +89,67 @@ def return_specified_kingdom(full_dataset: torchvision.datasets.INaturalist,
     return plantae_dataset
 
 
+def check_any_in_vermont(base_dataset: torchvision.datasets.INaturalist,
+                         cat_id: int,
+                         real_indices: list[int],
+                         annotations: dict[str, tuple[float, float]],
+                         vt_geom) -> bool:
+    """Check if any image for a given cat_id is geolocated in Vermont."""
+    # Filter to just the real indices that belong to this cat_id
+    indices_for_cat = [idx for idx in real_indices if base_dataset.index[idx][0] == cat_id]
+
+    # Go category by category, grab the annotations for the filename (the individual images) check if in vermont
+    for idx in indices_for_cat:
+        _, filename = base_dataset.index[idx]
+        if filename in annotations:
+            lat, lon = annotations[filename]
+            if lat is not None and lon is not None:
+                if vt_geom.contains(Point(lon, lat)):
+                    return True
+
+    return False
+
+
+def return_species_relevant_to_vermont(dataset: torchvision.datasets.INaturalist,
+                                       dataset_name: str = "2021_train",
+                                       kingom_name: str = "plantae") -> Subset:
+    """Return all images of species that have at least one observation in Vermont."""
+
+    plant_dataset = return_specified_kingdom(full_dataset=dataset, kingom_name=kingom_name)
+
+    # Unwrap the Subset to get the base dataset and real indices
+    ds = plant_dataset
+    indices = list(range(len(ds)))
+    while isinstance(ds, Subset):
+        indices = [ds.indices[i] for i in indices]
+        ds = ds.dataset
+
+    # Load annotations and Vermont geometry once
+    annotations = read_image_annotations_from_file(dataset_name=dataset_name)
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    shapefile_path = PROJECT_ROOT / 'data/state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'
+    states = gpd.read_file(shapefile_path)
+    vt_geom = states[states['STUSPS'] == 'VT'].geometry.iloc[0]
+
+    # Get unique plant cat_ids present in the subset
+    plant_cat_ids = set(ds.index[idx][0] for idx in indices)
+
+    # Check each species for Vermont presence
+    vermont_cat_ids = set()
+    for cat_id in tqdm(plant_cat_ids, desc="Checking species for Vermont presence", unit="species"):
+        if check_any_in_vermont(ds, cat_id, indices, annotations, vt_geom):
+            vermont_cat_ids.add(cat_id)
+
+    print(f"Species found in Vermont: {len(vermont_cat_ids)} / {len(plant_cat_ids)}")
+
+    # Return ALL images of Vermont-relevant species (not just the Vermont ones)
+    vermont_species_indices = [
+        i for i, idx in enumerate(indices)
+        if ds.index[idx][0] in vermont_cat_ids
+    ]
+
+    return Subset(plant_dataset, vermont_species_indices)
+
 # Returns True if a given lat/long is inside Vermont
 # False Otherwise
 def is_in_vermont(lat: float,
@@ -250,11 +311,9 @@ if __name__ == "__main__":
     read_image_annotations_from_file()
     print(is_in_vermont( 40.7128, -74.0060))
 
-    """Giles Todo:
-    fix rest of type hints
-    add toggle for what to do with images with no gps data
-    factor in location uncertainty?
-    Abstract data preprocessing out into its own script that runs before main script
-    use get_vermont_indices since it doesn't have to reload shapefile every time
-    Put constants all in one place
+    """
+    Subset by Relavent To Vermont
+    1) Subset to Plants first
+    2) Within plants, go species by species
+    3) If an example is inside of Vermont, add ALL instances of species to index, not just that single one. 
     """
