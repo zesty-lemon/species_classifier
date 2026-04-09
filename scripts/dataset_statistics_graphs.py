@@ -31,11 +31,8 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              target_type="full",
                                              download = False)
 
-# Subset the dataset to only include plants
-plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
-
-# Subset the dataset further to only include Vermont images
-vermont_plant_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset, dataset_name=CURRENT_DATASET_NAME)
+# Subset the dataset further to only include Plants found in Vermont
+vermont_plant_dataset = scripts.dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
 
 # Flatten nested subsets and create contiguous integer labels
 flat_dataset = scripts.dataset_utils.FlatDataset(vermont_plant_dataset)
