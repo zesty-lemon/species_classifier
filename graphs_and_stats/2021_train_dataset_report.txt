@@ -1,0 +1,7 @@
+----- 2021_train Dataset Report -----
+=================================
+
+-------- General Metrics -------
+Number of Plant Classes: 947
+Average Samples Per Class: 10.5
+

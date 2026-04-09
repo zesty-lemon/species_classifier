@@ -17,13 +17,13 @@ import constants as c
 # ------------ Initial Setup ------------
 # Pick a dataset directory dynamically to load the data
 CURRENT_DATASET_NAME = c.MINI_DATASET
-local_directory_path = Path(c.LOCAL_DATA_DIR, CURRENT_DATASET_NAME)
+local_directory_path = Path(c.MINI_LOCAL_DATA_DIR, CURRENT_DATASET_NAME)
 external_directory_path = Path(c.EXTERNAL_DATA_DIR, CURRENT_DATASET_NAME)
 system_directory_path = Path(c.SYSTEM_DATA_DIR, CURRENT_DATASET_NAME)
 
 DATA_PATH = ""
 if local_directory_path.is_dir():
-    DATA_PATH = c.LOCAL_DATA_DIR
+    DATA_PATH = c.MINI_LOCAL_DATA_DIR
     print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {local_directory_path}")
 elif system_directory_path.is_dir():
     DATA_PATH = c.SYSTEM_DATA_DIR

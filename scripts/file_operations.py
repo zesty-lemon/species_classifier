@@ -7,6 +7,7 @@ from pathlib import Path
 # before opening the inaturalist data, we have to clean them up
 def delete_ds_store(target_dir):
     # get the project root (fixes weird issues with relative filepaths by making them absolute)
+    print("Deleting .DS_Store files (MacOS Preview Files)")
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     DATA_DIR = PROJECT_ROOT / target_dir
 

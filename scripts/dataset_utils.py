@@ -134,7 +134,7 @@ def get_lat_lon_from_annotations(dataset, idx, annotations: dict[str, tuple[floa
     return lat, lon
 
 
-def get_vermont_indices(dataset,
+def get_vermont_indices(dataset, dataset_name: str = "2021_train_mini",
                         shapefile_path : str = 'data/state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'):
     """Batch-check all images and return indices inside Vermont."""
 
@@ -147,7 +147,7 @@ def get_vermont_indices(dataset,
 
     indices = []
 
-    image_annotations = read_image_annotations_from_file()
+    image_annotations = read_image_annotations_from_file(dataset_name=dataset_name)
 
     images_missing_lat_long = 0
     images_in_vermont = 0
@@ -171,13 +171,11 @@ def get_vermont_indices(dataset,
     return indices
 
 
-def return_vermont_images(dataset):
+def return_vermont_images(dataset, dataset_name: str = "2021_train_mini"):
     """Filter dataset indices to only images geolocated in Vermont."""
     print("----- BEGIN filtering dataset to only Vermont -----")
-    print(" NOTE TO DEVELOPER!!!!!!!!! \n MAKE SURE YOU FIX THE CODE TO GRAB CLASS LABELS - THE SUBSET OBJECT WILL BREAK THIS")
-    vermont_indices = []
 
-    vermont_indices = get_vermont_indices(dataset=dataset)
+    vermont_indices = get_vermont_indices(dataset=dataset, dataset_name=dataset_name)
 
     print("----- END filtering dataset to only Vermont -----")
     return Subset(dataset, vermont_indices)
@@ -197,8 +195,15 @@ Json Structure for Annotations:
     "location_uncertainty": 77
   }
   """
-def read_image_annotations_from_file(annotation_filepath: str = "data/2021_train_mini_annotations/train_mini.json") -> dict[
+def read_image_annotations_from_file(annotation_filepath: str = None, dataset_name: str = "2021_train_mini") -> dict[
     str, tuple[float, float]]:
+    if annotation_filepath is None:
+        # Map dataset name to its annotation file
+        annotation_files = {
+            "2021_train_mini": "data/2021_train_mini_annotations/train_mini.json",
+            "2021_train": "../data/2021_train_annotations/train.json",
+        }
+        annotation_filepath = annotation_files[dataset_name]
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     DATA_DIR = PROJECT_ROOT / annotation_filepath
 
