@@ -262,7 +262,7 @@ def read_image_annotations_from_file(annotation_filepath: str = None, dataset_na
         # Map dataset name to its annotation file
         annotation_files = {
             "2021_train_mini": "data/2021_train_mini_annotations/train_mini.json",
-            "2021_train": "../data/2021_train_annotations/train.json",
+            "2021_train": "./data/2021_train_annotations/train.json",
         }
         annotation_filepath = annotation_files[dataset_name]
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
