@@ -64,7 +64,7 @@ scripts.file_operations.delete_ds_store(DATA_PATH)
 
 # Download and load the full training dataset
 full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
-                                             version='2021_train',
+                                             version='2021_test',
                                              target_type="full",
                                              transform = transfer_transform,
                                              download = True)

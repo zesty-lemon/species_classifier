@@ -6,6 +6,11 @@ from pathlib import Path
 # These files break the way torchvision opens the iNaturalist data
 # before opening the inaturalist data, we have to clean them up
 def delete_ds_store(target_dir):
+    """
+    Delete any lingering MacOS Preview Files (these break the torchvision loaders)
+    :param target_dir: Root directory of data
+    :return: None
+    """
     # get the project root (fixes weird issues with relative filepaths by making them absolute)
     print("Deleting .DS_Store files (MacOS Preview Files)")
     PROJECT_ROOT = Path(__file__).resolve().parent.parent

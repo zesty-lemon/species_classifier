@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.models as models
-import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, random_split, Subset
 import time
 import matplotlib.pyplot as plt
@@ -13,44 +12,13 @@ import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
 import constants as c
+import preprocessing.transforms as t
+from config.device_config import device, device_name
+import config.data_config as data_config
 
 # ------------ Initial Setup ------------
-# Pick a dataset directory dynamically to load the data
-CURRENT_DATASET_NAME = c.MINI_DATASET
-local_directory_path = Path(c.MINI_LOCAL_DATA_DIR, CURRENT_DATASET_NAME)
-external_directory_path = Path(c.EXTERNAL_DATA_DIR, CURRENT_DATASET_NAME)
-system_directory_path = Path(c.SYSTEM_DATA_DIR, CURRENT_DATASET_NAME)
-
-DATA_PATH = ""
-if local_directory_path.is_dir():
-    DATA_PATH = c.MINI_LOCAL_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {local_directory_path}")
-elif system_directory_path.is_dir():
-    DATA_PATH = c.SYSTEM_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {system_directory_path}")
-elif external_directory_path.is_dir():
-    DATA_PATH = c.EXTERNAL_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {external_directory_path}")
-else:
-    print(f"ERROR - data for dataset {CURRENT_DATASET_NAME} not found in directory "
-          f"{local_directory_path} OR {system_directory_path} OR {external_directory_path} "
-          f"\n Check Paths & Dataset Name")
-
-# Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
-device_name = 'cpu' # Fallback to CPU
-if torch.cuda.is_available(): # Prefer CUDA
-    device_name = 'cuda'
-elif torch.backends.mps.is_available(): # Use METAL if CUDA is unavailable
-    device_name = 'mps'
-
-# Set Device
-device = torch.device(device_name)
-
-# Print the device being used to verify GPU acceleration
-print(f"Using device: {device}")
-
-# Initialize a dictionary to store and compare results from different experiments
-results = {}
+# Get Dataset Name & Path
+CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_path(c.FULL_DATASET)
 
 # Set manual seeds for both PyTorch and NumPy to ensure reproducible results
 torch.manual_seed(42)
@@ -58,19 +26,8 @@ np.random.seed(42)
 
 # ------------ Load Data ------------
 print("------ Begin Loading Data ------")
-# Define the data transformations for testing: No augmentation needed
-test_transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
-])
-
-# Transform images to resnet standard
-transfer_transform = transforms.Compose([
-    transforms.Resize((224,224)), # Resize to ImageNet standard
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) # ImageNet stats
-])
+# Define the data transformations
+test_transform, transfer_transform = t.get_test_transfer_transforms()
 
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
 scripts.file_operations.delete_ds_store(DATA_PATH)
@@ -82,14 +39,12 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              transform = transfer_transform,
                                              download = False)
 
-# Subset the dataset to only include plants
-plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
-
-# # # Subset the dataset further to only include Vermont images
-# plant_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset)
+# Subset the dataset further to only include Plants found in Vermont
+vermont_plant_dataset = scripts.dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
 
 # Flatten nested subsets and create contiguous integer labels
-flat_dataset = scripts.dataset_utils.FlatDataset(plant_dataset)
+flat_dataset = scripts.dataset_utils.FlatDataset(vermont_plant_dataset)
+
 num_plant_classes = flat_dataset.num_classes
 
 print(f"Num Classes: {num_plant_classes}")
@@ -99,9 +54,17 @@ test_size = len(flat_dataset) - train_size
 train_set, test_set = random_split(flat_dataset, [train_size, test_size])
 
 # Create DataLoaders for efficient batch processing using the whole dataset
-train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
+use_cuda = (device_name == 'cuda')
+
+train_loader = DataLoader(train_set, batch_size=128, shuffle=True,
+                          num_workers=4 if use_cuda else 0,
+                          pin_memory=use_cuda)
+
 # Test loader uses the test set for final evaluation
-test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
+test_loader = DataLoader(test_set, batch_size=128, shuffle=False,
+                         num_workers=4 if use_cuda else 0,
+                         pin_memory=use_cuda)
+
 # Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
 print("------ End Loading Data ------")
@@ -114,35 +77,42 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, momentum=0.9)
+    scaler = torch.amp.GradScaler(enabled=(device_name == 'cuda')) # only enable if running on CUDA
 
     print(f"\nTraining {name} for {epochs} epochs...")
     start_time = time.time()
 
     # Metrics to track
-    history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': [], 'val_top5_acc': []}
+    history = {'train_loss': [], 'train_acc': [], 'train_top5_acc': [], 'val_loss': [], 'val_acc': [], 'val_top5_acc': []}
 
     for epoch in range(epochs):
         # --- Training Phase ---
         model.train()
         running_loss = 0.0
         correct = 0
+        top5_correct = 0
         total = 0
 
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+            with torch.amp.autocast(device_type=device_name):
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             running_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+            _, top5_pred = outputs.topk(5, dim=1)
+            top5_correct += (top5_pred == labels.unsqueeze(1)).any(dim=1).sum().item()
 
         train_loss = running_loss / len(train_loader)
         train_acc = 100 * correct / total
+        train_top5_acc = 100 * top5_correct / total
 
         # --- Validation Phase ---
         model.eval()
@@ -154,8 +124,9 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
         with torch.no_grad():
             for images, labels in test_loader:
                 images, labels = images.to(device), labels.to(device)
-                outputs = model(images)
-                loss = criterion(outputs, labels)
+                with torch.amp.autocast(device_type=device_name):
+                    outputs = model(images)
+                    loss = criterion(outputs, labels)
                 val_loss += loss.item()
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
@@ -167,11 +138,13 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
         epoch_val_acc = 100 * correct / total
         epoch_val_top5_acc = 100 * top5_correct / total
 
-        print(
-            f"  Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}% | Val Top-5 Acc: {epoch_val_top5_acc:.2f}%")
+        current_iteration_status = f"  Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Train Top-5: {train_top5_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}% | Val Top-5: {epoch_val_top5_acc:.2f}%"
+
+        print(current_iteration_status)
 
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
+        history['train_top5_acc'].append(train_top5_acc)
         history['val_loss'].append(epoch_val_loss)
         history['val_acc'].append(epoch_val_acc)
         history['val_top5_acc'].append(epoch_val_top5_acc)
@@ -195,12 +168,12 @@ def plot_training_curves(history, name="Model"):
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
-    # --- Accuracy ---
-    ax2.plot(epochs, history["train_acc"], "o-", label="Train Acc")
-    ax2.plot(epochs, history["val_acc"], "s-", label="Val Acc")
+    # --- Top-5 Accuracy ---
+    ax2.plot(epochs, history["train_top5_acc"], "o-", label="Train Top-5 Acc")
+    ax2.plot(epochs, history["val_top5_acc"], "s-", label="Val Top-5 Acc")
     ax2.set_xlabel("Epoch")
-    ax2.set_ylabel("Accuracy (%)")
-    ax2.set_title(f"{name} — Accuracy per Epoch")
+    ax2.set_ylabel("Top-5 Accuracy (%)")
+    ax2.set_title(f"{name} — Top-5 Accuracy per Epoch")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
