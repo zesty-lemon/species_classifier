@@ -2,17 +2,9 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torchvision
-import torchvision.models as models
-from torch.utils.data import DataLoader, random_split, Subset
 import time
 import matplotlib.pyplot as plt
-import numpy as np
-import scripts.file_operations
-import scripts.dataset_utils
 import constants as c
-import preprocessing.transforms as t
 from config.device_config import device, device_name
 import config.data_config as data_config
 
@@ -20,54 +12,10 @@ import config.data_config as data_config
 # Get Dataset Name & Path
 CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_path(c.FULL_DATASET)
 
-# Set manual seeds for both PyTorch and NumPy to ensure reproducible results
-torch.manual_seed(42)
-np.random.seed(42)
-
-# ------------ Load Data ------------
-print("------ Begin Loading Data ------")
-# Define the data transformations
-test_transform, transfer_transform = t.get_test_transfer_transforms()
-
-# Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-scripts.file_operations.delete_ds_store(DATA_PATH)
-
-# Download and load the full training dataset
-full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
-                                             version=CURRENT_DATASET_NAME,
-                                             target_type="full",
-                                             transform = transfer_transform,
-                                             download = False)
-
-# Subset the dataset further to only include Plants found in Vermont
-vermont_plant_dataset = scripts.dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
-
-# Flatten nested subsets and create contiguous integer labels
-flat_dataset = scripts.dataset_utils.FlatDataset(vermont_plant_dataset)
-
-num_plant_classes = flat_dataset.num_classes
-
-print(f"Num Classes: {num_plant_classes}")
-
-train_size = int(0.8 * len(flat_dataset))
-test_size = len(flat_dataset) - train_size
-train_set, test_set = random_split(flat_dataset, [train_size, test_size])
-
-# Create DataLoaders for efficient batch processing using the whole dataset
-use_cuda = (device_name == 'cuda')
-
-train_loader = DataLoader(train_set, batch_size=128, shuffle=True,
-                          num_workers=4 if use_cuda else 0,
-                          pin_memory=use_cuda)
-
-# Test loader uses the test set for final evaluation
-test_loader = DataLoader(test_set, batch_size=128, shuffle=False,
-                         num_workers=4 if use_cuda else 0,
-                         pin_memory=use_cuda)
-
-# Print dataset sizes to verify loading
-print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
-print("------ End Loading Data ------")
+train_loader, test_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_name=CURRENT_DATASET_NAME,
+                                                                                   data_path=DATA_PATH,
+                                                                                   device_name=device_name,
+                                                                                   batch_size=128)
 
 # ------------ Train Model ------------
 def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model"):
