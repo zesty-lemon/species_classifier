@@ -1,4 +1,3 @@
-
 # Filepaths for Data Operations
 # project /data directory
 # 2021 Train Mini is located inside the project inside a /data directory

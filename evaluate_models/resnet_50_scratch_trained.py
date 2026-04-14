@@ -1,7 +1,8 @@
 from config import constants as c
 from config.device_config import device, device_name
-import config.data_config as data_config
-from models import resnet_50, evaluate_utils, train_utils
+import utils.data_load_and_config_util as data_config
+from models import resnet_50
+from utils import evaluate_utils, train_utils
 
 # ------------ Dataset Setup ------------
 CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(c.MINI_DATASET)
