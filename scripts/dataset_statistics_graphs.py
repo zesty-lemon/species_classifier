@@ -4,11 +4,10 @@ from pathlib import Path
 
 import torchvision
 import matplotlib.pyplot as plt
-import dataset_utils.file_operations
 from config import constants as c
 from collections import defaultdict
 
-from dataset_utils import dataset_utils
+from utils import dataset_utils
 
 """
 This script loads the dataset, filters it down to just vermont, gets some statistics on that dataset
@@ -33,10 +32,10 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              download = False)
 
 # Subset the dataset further to only include Plants found in Vermont
-vermont_plant_dataset = dataset_utils.dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
+vermont_plant_dataset = dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
 
 # Flatten nested subsets and create contiguous integer labels
-flat_dataset = dataset_utils.dataset_utils.FlatDataset(vermont_plant_dataset)
+flat_dataset = dataset_utils.FlatDataset(vermont_plant_dataset)
 
 # ------------ Get Statistics on Data ------------
 num_plant_classes = int(flat_dataset.num_classes)

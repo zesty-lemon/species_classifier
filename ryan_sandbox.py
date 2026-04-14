@@ -6,8 +6,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, random_split
 import time
 import numpy as np
-import dataset_utils.file_operations
-from dataset_utils import dataset_utils
+from utils import dataset_utils
 
 DATA_PATH = '/Volumes/giDrive' #'./data'
 
@@ -89,14 +88,14 @@ terrestris — Species
 """
 
 # Subset the dataset to only include plants
-plant_dataset = dataset_utils.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
+plant_dataset = dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
 # train_size = int(0.8 * len(plant_dataset))
 # test_size = len(plant_dataset) - train_size
 # train_set, test_set = random_split(plant_dataset, [train_size, test_size])
 
 # Flatten nested subsets and create contiguous integer labels
-flat_dataset = dataset_utils.dataset_utils.FlatDataset(plant_dataset)
+flat_dataset = dataset_utils.FlatDataset(plant_dataset)
 num_plant_classes = flat_dataset.num_classes
 print(f"Num Classes: {num_plant_classes}")
 
