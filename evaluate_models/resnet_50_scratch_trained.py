@@ -8,10 +8,10 @@ from utils import evaluate_utils, train_utils
 CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(c.MINI_DATASET)
 
 # ------------ Initialize Loaders ------------
-train_loader, test_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_name=CURRENT_DATASET_NAME,
-                                                                                   data_path=DATA_PATH,
-                                                                                   device_name=device_name,
-                                                                                   batch_size=128)
+train_loader, val_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_name=CURRENT_DATASET_NAME,
+                                                                                  data_path=DATA_PATH,
+                                                                                  device_name=device_name,
+                                                                                  batch_size=128)
 
 # ------------ Initialize Model ------------
 resnet50_model = resnet_50.ResNet50_Model(num_classes=num_plant_classes)
@@ -19,7 +19,7 @@ resnet50_model = resnet_50.ResNet50_Model(num_classes=num_plant_classes)
 # ------------ Train Model ------------
 history, duration = train_utils.scratch_train_model(resnet50_model,
                                                     train_loader,
-                                                    test_loader,
+                                                    val_loader,
                                                     device,
                                                     device_name,
                                                     epochs=10,

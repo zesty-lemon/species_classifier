@@ -7,8 +7,8 @@ from torch.utils.data import DataLoader, random_split
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-import dataset_utils.file_operations
-from dataset_utils import dataset_utils
+
+from utils import dataset_utils
 
 # ------------ Initial Setup ------------
 # DATA_PATH = '/Volumes/giDrive' # External Volume
@@ -61,13 +61,13 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              download = False)
 
 # Subset the dataset to only include plants
-plant_dataset = dataset_utils.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
+plant_dataset = dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
 # # # Subset the dataset further to only include Vermont images
 # plant_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset)
 
 # Flatten nested subsets and create contiguous integer labels
-flat_dataset = dataset_utils.dataset_utils.FlatDataset(plant_dataset)
+flat_dataset = dataset_utils.FlatDataset(plant_dataset)
 num_plant_classes = flat_dataset.num_classes
 
 print(f"Num Classes: {num_plant_classes}")

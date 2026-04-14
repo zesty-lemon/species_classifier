@@ -56,7 +56,7 @@ def delete_ds_store(target_dir):
 class FlatDataset(Dataset):
     """Unwraps nested Subsets into a flat dataset with contiguous integer labels."""
 
-    def __init__(self, subset):
+    def __init__(self, subset, cat_id_to_label=None):
         # Resolve all Subset layers down to the base INaturalist dataset
         indices = list(range(len(subset)))
         ds = subset
@@ -67,13 +67,17 @@ class FlatDataset(Dataset):
         self.base_dataset = ds
         self.indices = indices
 
-        # Build a mapping from sparse cat_ids to contiguous [0, num_classes-1]
-        cat_ids = set()
-        for idx in self.indices:
-            cat_id, _ = ds.index[idx]
-            cat_ids.add(cat_id)
+        if cat_id_to_label is not None:
+            # Use the provided mapping (e.g., from the training set)
+            self.cat_id_to_label = cat_id_to_label
+        else:
+            # Build a mapping from sparse cat_ids to contiguous [0, num_classes-1]
+            cat_ids = set()
+            for idx in self.indices:
+                cat_id, _ = ds.index[idx]
+                cat_ids.add(cat_id)
+            self.cat_id_to_label = {cat_id: i for i, cat_id in enumerate(sorted(cat_ids))}
 
-        self.cat_id_to_label = {cat_id: i for i, cat_id in enumerate(sorted(cat_ids))}
         self.label_to_category = {i: ds.all_categories[cat_id] for cat_id, i in self.cat_id_to_label.items()}
         self.num_classes = len(self.cat_id_to_label)
 
@@ -147,8 +151,9 @@ def check_any_in_vermont(base_dataset: torchvision.datasets.INaturalist,
 
 def return_species_relevant_to_vermont(dataset: torchvision.datasets.INaturalist,
                                        dataset_name: str = "2021_train",
-                                       kingom_name: str = "plantae") -> Subset:
-    """Return all images of species that have at least one observation in Vermont."""
+                                       kingom_name: str = "plantae") -> tuple[Subset, set]:
+    """Return all images of species that have at least one observation in Vermont.
+    Returns (subset, vermont_cat_ids) so the cat_ids can be reused on other splits."""
 
     plant_dataset = return_specified_kingdom(full_dataset=dataset, kingom_name=kingom_name)
 
@@ -183,7 +188,30 @@ def return_species_relevant_to_vermont(dataset: torchvision.datasets.INaturalist
         if ds.index[idx][0] in vermont_cat_ids
     ]
 
-    return Subset(plant_dataset, vermont_species_indices)
+    return Subset(plant_dataset, vermont_species_indices), vermont_cat_ids
+
+
+def filter_by_cat_ids(dataset: torchvision.datasets.INaturalist,
+                      cat_ids: set,
+                      kingom_name: str = "plantae") -> Subset:
+    """Filter a dataset to only include species matching the given cat_ids."""
+    plant_dataset = return_specified_kingdom(full_dataset=dataset, kingom_name=kingom_name)
+
+    # Unwrap the Subset to get the base dataset and real indices
+    ds = plant_dataset
+    indices = list(range(len(ds)))
+    while isinstance(ds, Subset):
+        indices = [ds.indices[i] for i in indices]
+        ds = ds.dataset
+
+    # Keep only images whose cat_id is in the provided set
+    matching_indices = [
+        i for i, idx in enumerate(indices)
+        if ds.index[idx][0] in cat_ids
+    ]
+
+    return Subset(plant_dataset, matching_indices)
+
 
 # Returns True if a given lat/long is inside Vermont
 # False Otherwise
@@ -298,6 +326,7 @@ def read_image_annotations_from_file(annotation_filepath: str = None, dataset_na
         annotation_files = {
             "2021_train_mini": "data/2021_train_mini_annotations/train_mini.json",
             "2021_train": "../data/2021_train_annotations/train.json",
+            "2021_valid": "../data/2021_valid_annotations/val.json"
         }
         annotation_filepath = annotation_files[dataset_name]
     PROJECT_ROOT = Path(__file__).resolve().parent.parent

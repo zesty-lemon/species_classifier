@@ -64,33 +64,44 @@ def load_vermont_plant_data(dataset_name,
                             batch_size=128) -> Tuple[DataLoader, DataLoader, int]:
 
     print("------ BEGIN Loading Data ------")
+    VAL_DATASET_NAME = c.VAL_DATASET
+    VAL_DATA_PATH = str(Path(__file__).resolve().parent.parent.parent / "data")
+
     # Define the data transformations
     train_transform, val_transform = get_test_transfer_transforms()
 
     # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
     dataset_utils.delete_ds_store(data_path)
 
-    # Download and load the full training dataset
+    # Load the full training dataset
     full_dataset = torchvision.datasets.INaturalist(root=data_path,
                                                     version=dataset_name,
                                                     target_type="full",
                                                     transform=train_transform,
                                                     download=False)
 
+    # Load the validation training dataset
+    val_dataset = torchvision.datasets.INaturalist(root=VAL_DATA_PATH,
+                                                   version=VAL_DATASET_NAME,
+                                                   target_type="full",
+                                                   transform=val_transform,
+                                                   download=False)
+
     # Subset the dataset further to only include Plants found in Vermont
-    vermont_plant_dataset = dataset_utils.dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset,
-                                                                                           kingom_name="Plantae")
+    vermont_plant_dataset, vermont_cat_ids = dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset,
+                                                                                              dataset_name=dataset_name,
+                                                                                              kingom_name="Plantae")
+
+    # Subset the validation dataset down to just species in vermont
+    vermont_val_plant_dataset = dataset_utils.filter_by_cat_ids(val_dataset,
+                                                                cat_ids=vermont_cat_ids,
+                                                                kingom_name="Plantae")
 
     # Flatten nested subsets and create contiguous integer labels
-    flat_dataset = dataset_utils.dataset_utils.FlatDataset(vermont_plant_dataset)
+    train_set = dataset_utils.FlatDataset(vermont_plant_dataset)
+    val_set = dataset_utils.FlatDataset(vermont_val_plant_dataset, cat_id_to_label=train_set.cat_id_to_label)
 
-    num_plant_classes = flat_dataset.num_classes
-
-    print(f"Num Classes: {num_plant_classes}")
-
-    train_size = int(0.8 * len(flat_dataset))
-    test_size = len(flat_dataset) - train_size
-    train_set, test_set = random_split(flat_dataset, [train_size, test_size])
+    num_plant_classes = train_set.num_classes
 
     # Create DataLoaders for efficient batch processing using the whole dataset
     use_cuda = (device_name == 'cuda')
@@ -100,12 +111,12 @@ def load_vermont_plant_data(dataset_name,
                               pin_memory=use_cuda)
 
     # Test loader uses the test set for final evaluation
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False,
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False,
                              num_workers=4 if use_cuda else 0,
                              pin_memory=use_cuda)
 
     # Print dataset sizes to verify loading
-    print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
+    print(f"Dataset initialization complete. Train: {len(train_set)}, Val: {len(val_set)}")
     print("------ END Loading Data ------")
 
-    return train_loader, test_loader, num_plant_classes
+    return train_loader, val_loader, num_plant_classes

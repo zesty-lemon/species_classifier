@@ -1,0 +1,11 @@
+----- 2021_valid Dataset Report -----
+=================================
+
+-------- General Metrics --------
+Number of Plant Classes: 947
+Average Samples Per Class: 10.0
+Median Samples Per Class: 10
+Min Samples Per Class: 10
+Max Samples Per Class: 10
+Classes with fewer than 10 examples: 0 out of 947
+

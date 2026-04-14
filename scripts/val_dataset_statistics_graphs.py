@@ -14,8 +14,12 @@ This script loads the dataset, filters it down to just vermont, gets some statis
 and then saves a report to the /graphs_and_stats directory
 """
 # ------------ Initial Setup ------------
-CURRENT_DATASET_NAME = c.VAL_DATASET
-DATA_PATH = str(Path(__file__).resolve().parent.parent / "data")
+VAL_DATASET_NAME = c.VAL_DATASET
+VAL_DATA_PATH = str(Path(__file__).resolve().parent.parent.parent / "data")
+
+FULL_DATASET_NAME = c.FULL_DATASET
+FULL_DATA_PATH = str(Path(__file__).resolve().parent.parent.parent / "data")
+
 REPORT_DIRECTORY = str(Path(__file__).resolve().parent.parent / "graphs_and_stats")
 
 TOO_FEW_THRESHOLD = 10
@@ -23,19 +27,32 @@ TOO_FEW_THRESHOLD = 10
 print("------ BEGIN Loading Data ------")
 
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-dataset_utils.delete_ds_store(DATA_PATH)
+dataset_utils.delete_ds_store(VAL_DATA_PATH)
+dataset_utils.delete_ds_store(FULL_DATA_PATH)
 
 # Download and load the full training dataset
-full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
-                                             version=CURRENT_DATASET_NAME,
-                                             target_type="full",
-                                             download = False)
+full_dataset = torchvision.datasets.INaturalist(root=FULL_DATA_PATH,
+                                                version=FULL_DATASET_NAME,
+                                                target_type="full",
+                                                download = False)
 
 # Subset the dataset further to only include Plants found in Vermont
-vermont_plant_dataset = dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, dataset_name=CURRENT_DATASET_NAME, kingom_name="Plantae")
+full_vermont_plant_dataset, vermont_plant_cat_ids = dataset_utils.return_species_relevant_to_vermont(
+    dataset=full_dataset,
+    dataset_name=FULL_DATASET_NAME,
+    kingom_name="Plantae")
+
+val_dataset = torchvision.datasets.INaturalist(root=VAL_DATA_PATH,
+                                                version=VAL_DATASET_NAME,
+                                                target_type="full",
+                                                download = False)
+
+# Subset the validation dataset down to just species in vermont
+val_vermont_plant_dataset = dataset_utils.filter_by_cat_ids(val_dataset, cat_ids=vermont_plant_cat_ids,
+                                                            kingom_name="Plantae")
 
 # Flatten nested subsets and create contiguous integer labels
-flat_dataset = dataset_utils.FlatDataset(vermont_plant_dataset)
+flat_dataset = dataset_utils.FlatDataset(val_vermont_plant_dataset)
 
 # ------------ Get Statistics on Data ------------
 num_plant_classes = int(flat_dataset.num_classes)
@@ -59,7 +76,7 @@ for label, indices in class_to_indices.items():
     total_num_samples = total_num_samples + num_samples_in_class
     sample_counts.append(num_samples_in_class)
 
-report_path = os.path.join(REPORT_DIRECTORY, f"{CURRENT_DATASET_NAME}_dataset_report.txt")
+report_path = os.path.join(REPORT_DIRECTORY, f"{VAL_DATASET_NAME}_dataset_report.txt")
 
 # Calculate Additional Statistics
 num_below_threshold = 0
@@ -69,7 +86,7 @@ for species_count in sample_counts:
 
 # Build & Save Final Report
 with open(report_path, "w", encoding="utf-8") as f:
-    f.write(f"----- {CURRENT_DATASET_NAME} Dataset Report -----\n")
+    f.write(f"----- {VAL_DATASET_NAME} Dataset Report -----\n")
     f.write("=================================\n\n")
 
     f.write("-------- General Metrics --------\n")
@@ -92,8 +109,8 @@ fig, ax = plt.subplots(figsize=(14, 5))
 ax.bar(range(len(sorted_counts)), sorted_counts, color="steelblue", edgecolor="none")
 ax.set_xlabel("Species (sorted by sample count)")
 ax.set_ylabel("Number of Samples")
-ax.set_title(f"{CURRENT_DATASET_NAME} — Class Distribution (sorted)")
+ax.set_title(f"{VAL_DATASET_NAME} — Class Distribution (sorted)")
 ax.grid(axis="y", alpha=0.3)
 plt.tight_layout()
-plt.savefig(os.path.join(REPORT_DIRECTORY, f"{CURRENT_DATASET_NAME}_class_distribution.png"), dpi=150)
+plt.savefig(os.path.join(REPORT_DIRECTORY, f"{VAL_DATASET_NAME}_class_distribution.png"), dpi=150)
 plt.show()

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import time
 
-def scratch_train_model(model, train_loader, test_loader, device, device_name, epochs=5, lr=0.01, name="Model"):
+def scratch_train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model"):
     """
     Generic training loop with validation. Returns all metrics for comparison.
     """
@@ -61,7 +61,7 @@ def scratch_train_model(model, train_loader, test_loader, device, device_name, e
         total = 0
 
         with torch.no_grad():
-            for images, labels in test_loader:
+            for images, labels in val_loader:
                 images, labels = images.to(device), labels.to(device)
                 with torch.amp.autocast(device_type=device_name):
                     outputs = model(images)
@@ -73,7 +73,7 @@ def scratch_train_model(model, train_loader, test_loader, device, device_name, e
                 _, top5_pred = outputs.topk(5, dim=1)
                 top5_correct += (top5_pred == labels.unsqueeze(1)).any(dim=1).sum().item()
 
-        epoch_val_loss = val_loss / len(test_loader)
+        epoch_val_loss = val_loss / len(val_loader)
         epoch_val_acc = 100 * correct / total
         epoch_val_top5_acc = 100 * top5_correct / total
 
