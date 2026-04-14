@@ -14,7 +14,7 @@ This script loads the dataset, filters it down to just vermont, gets some statis
 and then saves a report to the /graphs_and_stats directory
 """
 # ------------ Initial Setup ------------
-CURRENT_DATASET_NAME = c.MINI_DATASET
+CURRENT_DATASET_NAME = c.VAL_DATASET
 DATA_PATH = str(Path(__file__).resolve().parent.parent / "data")
 REPORT_DIRECTORY = str(Path(__file__).resolve().parent.parent / "graphs_and_stats")
 
@@ -32,7 +32,7 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              download = False)
 
 # Subset the dataset further to only include Plants found in Vermont
-vermont_plant_dataset = dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
+vermont_plant_dataset = dataset_utils.return_species_relevant_to_vermont(dataset=full_dataset, dataset_name=CURRENT_DATASET_NAME, kingom_name="Plantae")
 
 # Flatten nested subsets and create contiguous integer labels
 flat_dataset = dataset_utils.FlatDataset(vermont_plant_dataset)

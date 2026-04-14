@@ -11,3 +11,4 @@ SYSTEM_DATA_DIR = '../../data'
 
 MINI_DATASET = '2021_train_mini'
 FULL_DATASET = '2021_train'
+VAL_DATASET = '2021_valid'
