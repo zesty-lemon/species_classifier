@@ -1,5 +1,10 @@
 from matplotlib import pyplot as plt
 """
+This file contains code to evaluate model performance
+Plotting charts
+Generating Reports
+
+Note:
 Expecting History to be defined as
 history = {'train_loss': [],
            'train_acc': [],

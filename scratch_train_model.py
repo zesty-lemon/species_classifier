@@ -2,17 +2,15 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torchvision
-import torchvision.models as models
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader, random_split
 import time
 import matplotlib.pyplot as plt
 import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
-import constants as c
+from config import constants as c
 
 # ------------ Initial Setup ------------
 # Pick a dataset directory dynamically to load the data
@@ -57,7 +55,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # ------------ Load Data ------------
-print("------ Begin Loading Data ------")
+print("------ BEGIN Loading Data ------")
 # Define the data transformations for testing: No augmentation needed
 test_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -104,7 +102,7 @@ train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 # Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
-print("------ End Loading Data ------")
+print("------ END Loading Data ------")
 
 # ------------ Train Model ------------
 def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model"):
@@ -330,7 +328,7 @@ class ResNet50_Model(nn.Module):
 
 
 # Initialize
-print("------ Begin Training Model ------")
+print("------ BEGIN Training Model ------")
 resnet50_exercise = ResNet50_Model(num_classes=num_plant_classes)
 
 # Count parameters and compare with ResNet-18
@@ -340,7 +338,7 @@ print(f"ResNet-50 Parameters: {params_res50:,}")
 # Test: ResNet-50 (Scratch Training)
 history, duration = train_model(resnet50_exercise, train_loader, test_loader, epochs=10, lr=0.01, name="ResNet-50")
 
-print("------ End Training Model ------")
+print("------ END Training Model ------")
 
 plot_training_curves(history, name="ResNet50 - Scratch Trained")
 

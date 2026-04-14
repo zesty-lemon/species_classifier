@@ -1,13 +1,13 @@
 import torchvision
 from torch.utils.data import random_split, DataLoader
-import constants as c
+from config import constants as c
 from pathlib import Path
 from typing import Tuple
 import torchvision.transforms as transforms
 import scripts.file_operations
 import scripts.dataset_utils
 
-def get_dataset_name_path(dataset_name: str) -> Tuple[str, str]:
+def get_dataset_name_and_path(dataset_name: str) -> Tuple[str, str]:
     """
     Dynamically get the path to the desired dataset. Check local, then external volumes
     :param dataset_name:
@@ -61,7 +61,7 @@ def load_vermont_plant_data(dataset_name,
                             device_name,
                             batch_size=128) -> Tuple[DataLoader, DataLoader, int]:
 
-    print("------ Begin Loading Data ------")
+    print("------ BEGIN Loading Data ------")
     # Define the data transformations
     test_transform, transfer_transform = get_test_transfer_transforms()
 
@@ -104,6 +104,6 @@ def load_vermont_plant_data(dataset_name,
 
     # Print dataset sizes to verify loading
     print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
-    print("------ End Loading Data ------")
+    print("------ END Loading Data ------")
 
     return train_loader, test_loader, num_plant_classes

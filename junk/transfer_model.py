@@ -36,7 +36,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # ------------ Load Data ------------
-print("------ Begin Loading Data ------")
+print("------ BEGIN Loading Data ------")
 # Define the data transformations for testing: No augmentation needed
 test_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -87,7 +87,7 @@ transfer_train_loader = DataLoader(transfer_train_set, batch_size=64, shuffle=Tr
 # Test loader uses the test set for final evaluation
 transfer_test_loader = DataLoader(transfer_test_set, batch_size=64, shuffle=False)# Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(transfer_train_set)}, Test: {len(transfer_test_set)}")
-print("------ End Loading Data ------")
+print("------ END Loading Data ------")
 
 # ------------ Train Model ------------
 def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model"):
@@ -243,7 +243,7 @@ def get_transfer_model(model_name='resnet18', num_classes=10, feature_extract=Tr
     return model
 
 # Initialize
-print("------ Begin Training Model ------")
+print("------ BEGIN Training Model ------")
 # Evaluation 4: Transfer Learning with Fine-Tuning (ResNet-18)
 # For better accuracy, we use feature_extract=False to perform fine-tuning
 transfer_resnet = get_transfer_model('resnet50', num_classes=num_plant_classes, feature_extract=True)

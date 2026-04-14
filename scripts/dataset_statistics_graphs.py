@@ -4,10 +4,9 @@ from pathlib import Path
 
 import torchvision
 import matplotlib.pyplot as plt
-import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
-import constants as c
+from config import constants as c
 from collections import defaultdict
 
 """
@@ -21,7 +20,7 @@ REPORT_DIRECTORY = str(Path(__file__).resolve().parent.parent / "graphs_and_stat
 
 TOO_FEW_THRESHOLD = 10
 # ------------ Load Data ------------
-print("------ Begin Loading Data ------")
+print("------ BEGIN Loading Data ------")
 
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
 scripts.file_operations.delete_ds_store(DATA_PATH)

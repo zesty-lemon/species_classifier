@@ -43,7 +43,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # ------------ Load Data ------------
-print("------ Begin Loading Data ------")
+print("------ BEGIN Loading Data ------")
 # Define the data transformations for testing: No augmentation needed
 test_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -70,4 +70,4 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              download = True)
 
 # Print dataset sizes to verify loading
-print("------ End Loading Data ------")
+print("------ END Loading Data ------")

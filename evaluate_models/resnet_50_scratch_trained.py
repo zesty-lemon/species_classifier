@@ -1,11 +1,10 @@
-import constants as c
+from config import constants as c
 from config.device_config import device, device_name
 import config.data_config as data_config
-from train_and_evaluate import evaluate_utils, train_utils
-from models import resnet_50
+from models import resnet_50, evaluate_utils, train_utils
 
 # ------------ Dataset Setup ------------
-CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_path(c.MINI_DATASET)
+CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(c.MINI_DATASET)
 
 # ------------ Initialize Loaders ------------
 train_loader, test_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_name=CURRENT_DATASET_NAME,

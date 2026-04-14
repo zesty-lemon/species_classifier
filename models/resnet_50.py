@@ -1,5 +1,8 @@
-import torch
 import torch.nn as nn
+
+"""
+Code to instantiate a Resnet50 Model
+"""
 
 class ResNet50_Model(nn.Module):
     """
