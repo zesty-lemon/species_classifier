@@ -1,1 +1,0 @@
-This directory contains scripts to train and evaluate model performance

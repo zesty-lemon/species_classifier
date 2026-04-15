@@ -10,6 +10,7 @@ Generating Reports
 """
 
 def plot_training_curves(history, dataset_name, name="Model"):
+    name = name.replace(" ", "_")
     directory = c.PROJECT_ROOT / "graphs_and_stats" / name / dataset_name
     os.makedirs(directory, exist_ok=True)
 
@@ -50,6 +51,7 @@ def generate_performance_report(model,
                                 annotation=""):
 
     # ---- Generate & Save Report to Directory ----
+    name = name.replace(" ", "_")
     directory = c.PROJECT_ROOT / "graphs_and_stats" / name / dataset_name
     os.makedirs(directory, exist_ok=True)
     report_path = os.path.join(directory, f"{name}_report.txt")
