@@ -1,7 +1,7 @@
 from config import constants as c
 from config.device_config import device, device_name
 import utils.data_load_and_config_util as data_config
-from models import resnet_50
+from models.model_definitions import resnet_50
 from utils import evaluate_utils, train_utils
 
 # ------------ Dataset Setup ------------
@@ -22,7 +22,7 @@ history, duration = train_utils.scratch_train_model(resnet50_model,
                                                     val_loader,
                                                     device,
                                                     device_name,
-                                                    epochs=1,
+                                                    epochs=10,
                                                     lr=0.01,
                                                     name="ResNet-50")
 
