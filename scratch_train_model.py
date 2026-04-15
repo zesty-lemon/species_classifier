@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 import torchvision
@@ -14,24 +12,7 @@ from utils import dataset_utils
 # ------------ Initial Setup ------------
 # Pick a dataset directory dynamically to load the data
 CURRENT_DATASET_NAME = c.MINI_DATASET
-local_directory_path = Path(c.MINI_LOCAL_DATA_DIR, CURRENT_DATASET_NAME)
-external_directory_path = Path(c.EXTERNAL_DATA_DIR, CURRENT_DATASET_NAME)
-system_directory_path = Path(c.SYSTEM_DATA_DIR, CURRENT_DATASET_NAME)
-
-DATA_PATH = ""
-if local_directory_path.is_dir():
-    DATA_PATH = c.MINI_LOCAL_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {local_directory_path}")
-elif system_directory_path.is_dir():
-    DATA_PATH = c.SYSTEM_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {system_directory_path}")
-elif external_directory_path.is_dir():
-    DATA_PATH = c.EXTERNAL_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {external_directory_path}")
-else:
-    print(f"ERROR - data for dataset {CURRENT_DATASET_NAME} not found in directory "
-          f"{local_directory_path} OR {system_directory_path} OR {external_directory_path} "
-          f"\n Check Paths & Dataset Name")
+DATA_PATH = str(c.resolve_data_dir(CURRENT_DATASET_NAME))
 
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU

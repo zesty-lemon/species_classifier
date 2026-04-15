@@ -1,6 +1,5 @@
 import os
 import statistics
-from pathlib import Path
 
 import torchvision
 import matplotlib.pyplot as plt
@@ -15,8 +14,8 @@ and then saves a report to the /graphs_and_stats directory
 """
 # ------------ Initial Setup ------------
 CURRENT_DATASET_NAME = c.FULL_DATASET
-DATA_PATH = str(Path(__file__).resolve().parent.parent.parent / "data")
-REPORT_DIRECTORY = str(Path(__file__).resolve().parent.parent / "graphs_and_stats")
+DATA_PATH = str(c.resolve_data_dir(CURRENT_DATASET_NAME))
+REPORT_DIRECTORY = str(c.PROJECT_ROOT / "graphs_and_stats")
 
 TOO_FEW_THRESHOLD = 10
 # ------------ Load Data ------------

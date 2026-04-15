@@ -18,13 +18,11 @@ from PIL.ExifTags import TAGS, GPSTAGS
 def delete_ds_store(target_dir):
     """
     Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-    :param target_dir: Root directory of data
+    :param target_dir: Root directory of data (absolute path)
     :return: None
     """
-    # get the project root (fixes weird issues with relative filepaths by making them absolute)
     print("Deleting .DS_Store files (MacOS Preview Files)")
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    DATA_DIR = PROJECT_ROOT / target_dir
+    DATA_DIR = Path(target_dir)
 
     if not os.path.isdir(DATA_DIR):
         print(f"Error: '{DATA_DIR}' is not a valid directory.")
@@ -165,9 +163,9 @@ def return_species_relevant_to_vermont(dataset: torchvision.datasets.INaturalist
         ds = ds.dataset
 
     # Load annotations and Vermont geometry once
+    from config import constants as c
     annotations = read_image_annotations_from_file(dataset_name=dataset_name)
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    shapefile_path = PROJECT_ROOT / 'data/state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'
+    shapefile_path = c.INTERNAL_DATA_DIR / 'state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'
     states = gpd.read_file(shapefile_path)
     vt_geom = states[states['STUSPS'] == 'VT'].geometry.iloc[0]
 
@@ -217,10 +215,12 @@ def filter_by_cat_ids(dataset: torchvision.datasets.INaturalist,
 # False Otherwise
 def is_in_vermont(lat: float,
                   lon: float,
-                  filepath : str = 'data/state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp') -> bool:
-    # Get the absolute filepath from the current directory
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    DATA_DIR = PROJECT_ROOT / filepath
+                  filepath: str = None) -> bool:
+    from config import constants as c
+    if filepath is None:
+        DATA_DIR = c.INTERNAL_DATA_DIR / 'state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'
+    else:
+        DATA_DIR = Path(filepath)
     VT_USPS_CODE = 'VT'
 
     # Read in US Government Shapefile Containing States bounded by polygons
@@ -259,12 +259,13 @@ def get_lat_lon_from_annotations(dataset, idx, annotations: dict[str, tuple[floa
 
 
 def get_vermont_indices(dataset, dataset_name: str = "2021_train_mini",
-                        shapefile_path : str = 'data/state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'):
+                        shapefile_path: str = None):
     """Batch-check all images and return indices inside Vermont."""
-
-    # Get the absolute filepath from the current directory
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    DATA_DIR = PROJECT_ROOT / shapefile_path
+    from config import constants as c
+    if shapefile_path is None:
+        DATA_DIR = c.INTERNAL_DATA_DIR / 'state_boundary_files/cb_2024_us_all_500k/cb_2024_us_state_500k.shp'
+    else:
+        DATA_DIR = Path(shapefile_path)
 
     states = gpd.read_file(DATA_DIR)
     vt_geom = states[states['STUSPS'] == 'VT'].geometry.iloc[0]
@@ -321,18 +322,19 @@ Json Structure for Annotations:
   """
 def read_image_annotations_from_file(annotation_filepath: str = None, dataset_name: str = "2021_train_mini") -> dict[
     str, tuple[float, float]]:
+    from config import constants as c
     if annotation_filepath is None:
-        # Map dataset name to its annotation file
-        annotation_files = {
-            "2021_train_mini": "data/2021_train_mini_annotations/train_mini.json",
-            "2021_train": "../data/2021_train_annotations/train.json",
-            "2021_valid": "../data/2021_valid_annotations/val.json"
+        annotation_subpaths = {
+            "2021_train_mini": Path("2021_train_mini_annotations", "train_mini.json"),
+            "2021_train": Path("2021_train_annotations", "train.json"),
+            "2021_valid": Path("2021_valid_annotations", "val.json"),
         }
-        annotation_filepath = annotation_files[dataset_name]
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    DATA_DIR = PROJECT_ROOT / annotation_filepath
+        base = c.resolve_data_dir(dataset_name)
+        filepath = base / annotation_subpaths[dataset_name]
+    else:
+        filepath = Path(annotation_filepath)
 
-    with open(DATA_DIR) as f:
+    with open(filepath) as f:
         data = json.load(f)
 
     # Grab just the image name, the coordinates, and returns them
@@ -342,10 +344,13 @@ def read_image_annotations_from_file(annotation_filepath: str = None, dataset_na
 
 
 # Filter Dataset by Kingdom (Delete Directories Not In Desired Kingdom)
-def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = '/data/2021_train_mini'):
+def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = None):
+    from config import constants as c
     print(f"----- BEGIN Filtering By Kingdom = {kingdom_to_keep} -----")
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    DATA_DIR = PROJECT_ROOT / data_filepath
+    if data_filepath is None:
+        DATA_DIR = c.INTERNAL_DATA_DIR / "2021_train_mini"
+    else:
+        DATA_DIR = Path(data_filepath)
 
     directory_path = Path(DATA_DIR)
 
