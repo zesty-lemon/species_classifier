@@ -22,9 +22,20 @@ history, duration = train_utils.scratch_train_model(resnet50_model,
                                                     val_loader,
                                                     device,
                                                     device_name,
-                                                    epochs=10,
+                                                    epochs=1,
                                                     lr=0.01,
                                                     name="ResNet-50")
 
 # ------------ Evaluate Model ------------
-evaluate_utils.plot_training_curves(history, name="ResNet50 - Scratch Trained")
+evaluate_utils.plot_training_curves(history,
+                                    dataset_name=CURRENT_DATASET_NAME,
+                                    name="ResNet50 - Scratch Trained")
+
+evaluate_utils.generate_performance_report(model=resnet50_model,
+                                           val_loader=val_loader,
+                                           device=device,
+                                           device_name=device_name,
+                                           history=history,
+                                           dataset_name=CURRENT_DATASET_NAME,
+                                           name="ResNet50 - Scratch Trained",
+                                           annotation="Trained on Full Dataset")
