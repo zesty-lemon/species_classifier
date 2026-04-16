@@ -22,14 +22,14 @@ train_loader, val_loader, num_plant_classes = data_config.load_vermont_plant_dat
 resnet50_model = resnet_50_scratch_trained.ResNet50_Model(num_classes=num_plant_classes)
 
 # ------------ Train Model ------------
-history, duration = train_utils.scratch_train_model(resnet50_model,
-                                                    train_loader,
-                                                    val_loader,
-                                                    device,
-                                                    device_name,
-                                                    epochs=20,
-                                                    lr=0.01,
-                                                    name=MODEL_NAME)
+history, duration = train_utils.train_model(resnet50_model,
+                                            train_loader,
+                                            val_loader,
+                                            device,
+                                            device_name,
+                                            epochs=20,
+                                            lr=0.01,
+                                            name=MODEL_NAME)
 
 # ------------ Evaluate Model ------------
 evaluate_utils.plot_training_curves(history,
