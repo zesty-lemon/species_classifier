@@ -1,4 +1,4 @@
-# giles
+# Species Classifier
 Species Classification for Deep Learning Course
 
 """
