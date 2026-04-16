@@ -3,7 +3,8 @@ import torch.nn as nn
 import time
 
 
-def scratch_train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model"):
+def scratch_train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model",
+                        patience=7):
     """
     Generic training loop with validation. Returns all metrics for comparison.
     """
@@ -11,6 +12,7 @@ def scratch_train_model(model, train_loader, val_loader, device, device_name, ep
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, momentum=0.9)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs) # decay the learning rate with cosine annealing
     scaler = torch.amp.GradScaler(enabled=(device_name == 'cuda'))  # only enable if running on CUDA
 
     print(f"\nTraining {name} for {epochs} epochs...")
@@ -78,7 +80,10 @@ def scratch_train_model(model, train_loader, val_loader, device, device_name, ep
         epoch_val_acc = 100 * correct / total
         epoch_val_top5_acc = 100 * top5_correct / total
 
-        current_iteration_status = f"  Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Train Top-5: {train_top5_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}% | Val Top-5: {epoch_val_top5_acc:.2f}% | Learning Rate: {lr:.2f}%"
+        # step the scheduler
+        current_lr = optimizer.param_groups[0]['lr']
+        scheduler.step()
+        current_iteration_status = f"  Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Train Top-5: {train_top5_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}% | Val Top-5: {epoch_val_top5_acc:.2f}% | Learning Rate: {current_lr:.6f}%"
 
         print(current_iteration_status)
 
@@ -88,7 +93,7 @@ def scratch_train_model(model, train_loader, val_loader, device, device_name, ep
         history['val_loss'].append(epoch_val_loss)
         history['val_acc'].append(epoch_val_acc)
         history['val_top5_acc'].append(epoch_val_top5_acc)
-        history['learning_rate'].append(lr)
+        history['learning_rate'].append(current_lr)
 
     duration = time.time() - start_time
     print(

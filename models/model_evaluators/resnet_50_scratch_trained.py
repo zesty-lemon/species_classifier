@@ -27,7 +27,7 @@ history, duration = train_utils.scratch_train_model(resnet50_model,
                                                     val_loader,
                                                     device,
                                                     device_name,
-                                                    epochs=10,
+                                                    epochs=20,
                                                     lr=0.01,
                                                     name=MODEL_NAME)
 
