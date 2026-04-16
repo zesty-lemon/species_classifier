@@ -1,4 +1,4 @@
-# species_classifier
+# giles
 Species Classification for Deep Learning Course
 
 """
