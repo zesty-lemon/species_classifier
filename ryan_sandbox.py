@@ -20,9 +20,8 @@ from pathlib import Path
 import torchvision
 import matplotlib.pyplot as plt
 import numpy as np
-import scripts.file_operations
-import scripts.dataset_utils
-import constants as c
+
+from config import constants as c
 from collections import defaultdict
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder

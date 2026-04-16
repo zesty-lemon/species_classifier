@@ -1,40 +1,18 @@
-from pathlib import Path
-
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torchvision
-import torchvision.models as models
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader, random_split
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-import scripts.file_operations
-import scripts.dataset_utils
-import constants as c
+from config import constants as c
+from utils import dataset_utils
 
 # ------------ Initial Setup ------------
 # Pick a dataset directory dynamically to load the data
 CURRENT_DATASET_NAME = c.MINI_DATASET
-local_directory_path = Path(c.MINI_LOCAL_DATA_DIR, CURRENT_DATASET_NAME)
-external_directory_path = Path(c.EXTERNAL_DATA_DIR, CURRENT_DATASET_NAME)
-system_directory_path = Path(c.SYSTEM_DATA_DIR, CURRENT_DATASET_NAME)
-
-DATA_PATH = ""
-if local_directory_path.is_dir():
-    DATA_PATH = c.MINI_LOCAL_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {local_directory_path}")
-elif system_directory_path.is_dir():
-    DATA_PATH = c.SYSTEM_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {system_directory_path}")
-elif external_directory_path.is_dir():
-    DATA_PATH = c.EXTERNAL_DATA_DIR
-    print(f"Loading Dataset {CURRENT_DATASET_NAME} from path {external_directory_path}")
-else:
-    print(f"ERROR - data for dataset {CURRENT_DATASET_NAME} not found in directory "
-          f"{local_directory_path} OR {system_directory_path} OR {external_directory_path} "
-          f"\n Check Paths & Dataset Name")
+DATA_PATH = str(c.resolve_data_dir(CURRENT_DATASET_NAME))
 
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
@@ -57,7 +35,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # ------------ Load Data ------------
-print("------ Begin Loading Data ------")
+print("------ BEGIN Loading Data ------")
 # Define the data transformations for testing: No augmentation needed
 test_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -73,7 +51,7 @@ transfer_transform = transforms.Compose([
 ])
 
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-scripts.file_operations.delete_ds_store(DATA_PATH)
+dataset_utils.delete_ds_store(DATA_PATH)
 
 # Download and load the full training dataset
 full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
@@ -83,13 +61,13 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              download = False)
 
 # Subset the dataset to only include plants
-plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
+plant_dataset = dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
 # # # Subset the dataset further to only include Vermont images
 # plant_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset)
 
 # Flatten nested subsets and create contiguous integer labels
-flat_dataset = scripts.dataset_utils.FlatDataset(plant_dataset)
+flat_dataset = dataset_utils.FlatDataset(plant_dataset)
 num_plant_classes = flat_dataset.num_classes
 
 print(f"Num Classes: {num_plant_classes}")
@@ -104,7 +82,7 @@ train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 # Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
-print("------ End Loading Data ------")
+print("------ END Loading Data ------")
 
 # ------------ Train Model ------------
 def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model"):
@@ -345,7 +323,7 @@ class ResNet50_Model(nn.Module):
 
 
 # Initialize
-print("------ Begin Training Model ------")
+print("------ BEGIN Training Model ------")
 resnet50_exercise = ResNet50_Model(num_classes=num_plant_classes)
 
 # Count parameters and compare with ResNet-18
@@ -355,7 +333,7 @@ print(f"ResNet-50 Parameters: {params_res50:,}")
 # Test: ResNet-50 (Scratch Training)
 history, duration = train_model(resnet50_exercise, train_loader, test_loader, epochs=10, lr=0.01, name="ResNet-50")
 
-print("------ End Training Model ------")
+print("------ END Training Model ------")
 
 plot_training_curves(history, name="ResNet50 - Scratch Trained")
 

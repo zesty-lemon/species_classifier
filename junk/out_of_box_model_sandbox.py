@@ -1,15 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torchvision
-import torchvision.models as models
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader, random_split
 import time
-import matplotlib.pyplot as plt
 import numpy as np
-import scripts.file_operations
-import scripts.dataset_utils
+
+from utils import dataset_utils
 
 # ------------ Initial Setup ------------
 # DATA_PATH = '/Volumes/giDrive' # External Volume
@@ -35,7 +32,7 @@ torch.manual_seed(42)
 np.random.seed(42)
 
 # ------------ Load Data ------------
-print("------ Begin Loading Data ------")
+print("------ BEGIN Loading Data ------")
 # Define the data transformations for testing: No augmentation needed
 test_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -52,7 +49,7 @@ transfer_transform = transforms.Compose([
 ])
 
 # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-scripts.file_operations.delete_ds_store(DATA_PATH)
+dataset_utils.delete_ds_store(DATA_PATH)
 
 # Download and load the full training dataset
 full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
@@ -62,10 +59,10 @@ full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
                                              download = False)
 
 # Subset the dataset to only include plants
-plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
+plant_dataset = dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
 # # Subset the dataset further to only include Vermont images
-plant_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset)
+plant_dataset = dataset_utils.return_vermont_images(plant_dataset)
 
 train_size = int(0.8 * len(plant_dataset))
 test_size = len(plant_dataset) - train_size
@@ -77,7 +74,7 @@ train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 # Print dataset sizes to verify loading
 print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
-print("------ End Loading Data ------")
+print("------ END Loading Data ------")
 
 # ------------ Train Model ------------
 def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model"):
@@ -274,7 +271,7 @@ class ResNet50_Model(nn.Module):
 
 
 # Initialize
-print("------ Begin Training Model ------")
+print("------ BEGIN Training Model ------")
 resnet50_exercise = ResNet50_Model(num_classes=10)
 
 # Count parameters and compare with ResNet-18
@@ -284,7 +281,7 @@ print(f"ResNet-50 Parameters: {params_res50:,}")
 # Test: ResNet-50 (Scratch Training)
 train_acc, train_loss, val_acc, val_loss, t = train_model(resnet50_exercise, train_loader, test_loader, epochs=2, lr=0.01, name="ResNet-50")
 
-print("------ End Training Model ------")
+print("------ END Training Model ------")
 
 results['ResNet-50'] = {
     'train_acc': train_acc,
