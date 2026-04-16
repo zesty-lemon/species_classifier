@@ -12,6 +12,8 @@ import pandas as pd
 import geopandas as gpd
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
+from . import file_operations
+from collections import defaultdict
 
 # Subsets of Torchvision datasets are disgusting
 # they contain an index and a link to the original full dataset
@@ -305,6 +307,77 @@ def remove_unwanted_kingdoms(kingdom_to_keep: str, data_filepath: str = '/data/2
     print(f"Directories Kept:    {num_directories_kept}")
     print(f"Directories Deleted: {num_directories_deleted}")
     print(f"----- END Filtering By Kingdom = {kingdom_to_keep} -----")
+
+
+# download the filtered uniform full or mini dataset
+def download_vermont_images(dataset_name: str = '2021_train_mini', data_filepath: str = '/data/2021_train_mini'):
+    print("------ Begin Loading Data ------")
+
+    # Delete any lingering MacOS Preview Files (these break the torchvision loaders)
+    file_operations.delete_ds_store(data_filepath)
+
+    # Download and load the full training dataset
+    full_dataset = torchvision.datasets.INaturalist(root=data_filepath,
+                                                version=dataset_name,
+                                                target_type="full",
+                                                download = False)
+
+    # Subset the dataset further to only include Plants found in Vermont
+    vermont_plant_dataset = return_species_relevant_to_vermont(dataset=full_dataset, kingom_name="Plantae")
+
+    # Flatten nested subsets and create contiguous integer labels
+    flat_dataset = FlatDataset(vermont_plant_dataset)
+
+    # Build a mapping: label -> list of dataset indices
+    class_to_indices = defaultdict(list)
+    for idx in range(len(flat_dataset)):
+        real_idx = flat_dataset.indices[idx]
+        cat_id, _ = flat_dataset.base_dataset.index[real_idx]
+        label = flat_dataset.cat_id_to_label[cat_id]
+        class_to_indices[label].append(idx)
+
+    # ------------ Export Filtered Data ------------
+    print("\n------ Begin Exporting Filtered Dataset ------")
+
+    # Define where you want to save the new filtered dataset
+    # This creates a 'vermont_plants_dataset' folder in your primary DATA_PATH
+    EXPORT_DIR = Path(data_filepath) / "vermont_plants_dataset"
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Iterate class by class to save images
+    for label, indices in class_to_indices.items():
+        original_class_name = flat_dataset.label_to_category[label]
+        
+        # Split the original name at the first underscore to remove the old number
+        parts = original_class_name.split("_", 1)
+        
+        # Prepend the new ascending label (zero-padded to 5 digits)
+        if len(parts) == 2:
+            new_class_name = f"{label:05d}_{parts[1]}"
+        else:
+            new_class_name = f"{label:05d}_{original_class_name}"
+            
+        # Create the directory for this specific class
+        class_dir = EXPORT_DIR / new_class_name
+        class_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Exporting Class {label}: {new_class_name} ({len(indices)} images)...")
+        
+        # Save each image in the class
+        for i, dataset_idx in enumerate(indices):
+            # Retrieve the image from the dataset.
+            image, _ = flat_dataset[dataset_idx]
+            
+            # Create a unique filename for the image
+            file_name = f"{new_class_name}_img_{i:04d}.jpg"
+            file_path = class_dir / file_name
+            
+            # Save the PIL image to disk
+            image.save(file_path)
+
+    print(f"\nFiltered dataset exported to: {EXPORT_DIR}")
+
+
 
 
 if __name__ == "__main__":

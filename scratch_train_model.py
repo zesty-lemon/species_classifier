@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -13,6 +12,7 @@ import numpy as np
 import scripts.file_operations
 import scripts.dataset_utils
 import constants as c
+from torchvision.datasets import ImageFolder
 
 # ------------ Initial Setup ------------
 # Pick a dataset directory dynamically to load the data
@@ -36,6 +36,9 @@ else:
           f"{local_directory_path} OR {system_directory_path} OR {external_directory_path} "
           f"\n Check Paths & Dataset Name")
 
+# Where downloaded filtered uniform dataset is located
+dataset_dir = Path(DATA_PATH) / "vermont_plants_dataset" # "vermont_plants_dataset_mini"
+
 # Configure the device to use GPU (cuda) if available, otherwise MPS (mac) if available, otherwise fallback to CPU device_name = 'cpu'
 device_name = 'cpu' # Fallback to CPU
 if torch.cuda.is_available(): # Prefer CUDA
@@ -58,52 +61,74 @@ np.random.seed(42)
 
 # ------------ Load Data ------------
 print("------ Begin Loading Data ------")
-# Define the data transformations for testing: No augmentation needed
-test_transform = transforms.Compose([
+
+
+# ------------ Image Augmentation ------------
+train_transforms = transforms.Compose([
+    # Randomly crops a piece of the image and resizes it to 224x224
+    transforms.RandomResizedCrop(size=224, scale=(0.8, 1.0)), 
+    
+    # 50% chance to flip the image left-to-right (plants aren't direction-dependent)
+    transforms.RandomHorizontalFlip(p=0.5),
+    
+    # Randomly rotates the image up to 30 degrees in either direction
+    transforms.RandomRotation(degrees=30),
+    
+    # Simulates different lighting, shadows, and camera sensors
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.05),
+    
+    # Converts the PIL Image to a PyTorch Tensor
     transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
+    
+    # Standardizes pixel values (Crucial if using pre-trained models like ResNet)
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# Transform images to resnet standard
-transfer_transform = transforms.Compose([
-    transforms.Resize((224,224)), # Resize to ImageNet standard
-    transforms.RandomHorizontalFlip(),
+# Validation Transform have NO AUGMENTATION
+test_transforms = transforms.Compose([
+    transforms.Resize(256),        # Resize slightly larger first
+    transforms.CenterCrop(224),    # Crop the exact center
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) # ImageNet stats
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# Delete any lingering MacOS Preview Files (these break the torchvision loaders)
-scripts.file_operations.delete_ds_store(DATA_PATH)
+# ------------ Load Downloaded Vermont Dataset with Augmentations ------------
+base_dataset = ImageFolder(root=dataset_dir)
 
-# Download and load the full training dataset
-full_dataset = torchvision.datasets.INaturalist(root=DATA_PATH,
-                                             version=CURRENT_DATASET_NAME,
-                                             target_type="full",
-                                             transform = transfer_transform,
-                                             download = False)
+num_classes = len(base_dataset.classes)
+print(f"Total number of classes: {num_classes}")
 
-# Subset the dataset to only include plants
-plant_dataset = scripts.dataset_utils.return_specified_kingdom(full_dataset=full_dataset, kingom_name="Plantae")
 
-# # # Subset the dataset further to only include Vermont images
-# plant_dataset = scripts.dataset_utils.return_vermont_images(plant_dataset)
+# Split the dataset (e.g., 80% train, 20% validation)
+train_size = int(0.8 * len(base_dataset))
+test_size = len(base_dataset) - train_size
+train_subset, test_subset = random_split(base_dataset, [train_size, test_size])
 
-# Flatten nested subsets and create contiguous integer labels
-flat_dataset = scripts.dataset_utils.FlatDataset(plant_dataset)
-num_plant_classes = flat_dataset.num_classes
+# We need a custom wrapper to apply different transforms to each subset
+class DatasetWrapper:
+    def __init__(self, subset, transform=None):
+        self.subset = subset
+        self.transform = transform
+        
+    def __getitem__(self, index):
+        image, label = self.subset[index]
+        if self.transform:
+            image = self.transform(image)
+        return image, label
+        
+    def __len__(self):
+        return len(self.subset)
 
-print(f"Num Classes: {num_plant_classes}")
+# Wrap the subsets with their respective transforms
+train_dataset = DatasetWrapper(train_subset, transform=train_transforms)
+test_dataset = DatasetWrapper(test_subset, transform=test_transforms)
 
-train_size = int(0.8 * len(flat_dataset))
-test_size = len(flat_dataset) - train_size
-train_set, test_set = random_split(flat_dataset, [train_size, test_size])
+# Create the DataLoaders
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4)
 
-# Create DataLoaders for efficient batch processing using the whole dataset
-train_loader = DataLoader(train_set, batch_size=128, shuffle=True)
-# Test loader uses the test set for final evaluation
-test_loader = DataLoader(test_set, batch_size=128, shuffle=False)
 # Print dataset sizes to verify loading
-print(f"Dataset initialization complete. Train: {len(train_set)}, Test: {len(test_set)}")
+print(f"Dataset initialization complete. Train: {len(train_dataset)}, Test: {len(test_dataset)}")
 print("------ End Loading Data ------")
 
 # ------------ Train Model ------------
@@ -144,13 +169,13 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
             # top k outputs instead of 1
             _, predicted = torch.topk(outputs.data, 5, dim=1)
             # correct if predicted is in top k outputs
-            correct_top5 += (predicted == labels.view(-1, 1)).sum().item()
+            correct += (predicted == labels.view(-1, 1)).sum().item()
 
             total += labels.size(0)
 
         train_loss = running_loss / len(train_loader)
-        # train_acc = 100 * correct / total
-        train_acc_top5 = 100 * correct_top5 / total
+        train_acc = 100 * correct / total
+
 
         # --- Validation Phase ---
         model.eval()
@@ -164,14 +189,14 @@ def train_model(model, train_loader, test_loader, epochs=5, lr=0.01, name="Model
                 outputs = model(images)
                 loss = criterion(outputs, labels)
                 val_loss += loss.item()
-                
+
                 # _, predicted = torch.max(outputs.data, 1)
                 # correct += (predicted == labels).sum().item()
-                
+
                 # top k outputs instead of 1
                 _, predicted = torch.topk(outputs.data, 5, dim=1)
                 # correct if predicted is in top k outputs
-                correct_top5 += (predicted == labels.view(-1, 1)).sum().item()
+                correct += (predicted == labels.view(-1, 1)).sum().item()
 
                 total += labels.size(0)
 
@@ -346,7 +371,7 @@ class ResNet50_Model(nn.Module):
 
 # Initialize
 print("------ Begin Training Model ------")
-resnet50_exercise = ResNet50_Model(num_classes=num_plant_classes)
+resnet50_exercise = ResNet50_Model(num_classes=num_classes)
 
 # Count parameters and compare with ResNet-18
 params_res50 = sum(p.numel() for p in resnet50_exercise.parameters())
