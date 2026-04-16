@@ -1,5 +1,5 @@
 ResNet50_Scratch_Trained Report
-Trained on Full Dataset
+Trained on Mini Dataset
 ======================================
 
 ----- Summary -----

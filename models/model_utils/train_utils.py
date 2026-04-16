@@ -4,7 +4,7 @@ import time
 
 
 def train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model",
-                patience=5):
+                patience=5, min_delta=1e-4):
     """
     Generic training loop with validation. Returns all metrics for comparison.
     """
@@ -101,8 +101,8 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
         history['learning_rate'].append(current_lr)
 
         # Early Stopping
-        # check if no improvement for {patience} epochs. If no improvement, stop training
-        if epoch_val_loss < best_val_loss:
+        # only count as improvement if val loss drops by more than min_delta
+        if epoch_val_loss < best_val_loss - min_delta:
             best_val_loss = epoch_val_loss
             epochs_without_improvement = 0
         else:
