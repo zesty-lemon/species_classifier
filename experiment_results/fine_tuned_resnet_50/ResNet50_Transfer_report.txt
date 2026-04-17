@@ -5,6 +5,8 @@ Transfer Learning - Frozen Backbone
 ----- Summary -----
 Best Val Accuracy:  15.36% (epoch 28)
 Best Val Loss:      5.5602 (epoch 28)
+Val Top-5:          33.03
+Train Top-5:        35.03%
 Final Train Acc:    16.50%
 Final Val Acc:      15.20%
 Overfit Gap:        1.30%

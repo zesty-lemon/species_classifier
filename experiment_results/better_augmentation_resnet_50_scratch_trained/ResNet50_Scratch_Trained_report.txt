@@ -5,6 +5,8 @@ Trained on Full Dataset
 ----- Summary -----
 Best Val Accuracy:  60.48% (epoch 19)
 Best Val Loss:      1.6903 (epoch 20)
+Val Top-5:          81.97%
+Train Top-5:        84.35%
 Final Train Acc:    63.89%
 Final Val Acc:      59.60%
 Overfit Gap:        4.29%

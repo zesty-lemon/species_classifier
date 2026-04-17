@@ -219,3 +219,6 @@ CLAUDE.md
 !/data/ReadMe.txt
 
 !/data/state_boundary_files/
+
+# CANNOT HAVE API KEYS ON GITHUB!!!
+/config/keys.py
