@@ -4,7 +4,7 @@ import time
 
 
 def train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model",
-                patience=5, min_delta=1e-4):
+                patience=5, min_delta=1e-4, freeze_bn_stats=False):
     """
     Generic training loop with validation. Returns all metrics for comparison.
     """
@@ -35,6 +35,11 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
     for epoch in range(epochs):
         # --- Training Phase ---
         model.train()
+        if freeze_bn_stats:
+            # Keep running_mean/running_var fixed on frozen BN layers (pretrained backbone)
+            for m in model.modules():
+                if isinstance(m, nn.BatchNorm2d) and not m.weight.requires_grad:
+                    m.eval()
         running_loss = 0.0
         correct = 0
         top5_correct = 0

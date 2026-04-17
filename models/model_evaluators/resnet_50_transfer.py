@@ -29,7 +29,8 @@ history, duration = train_utils.train_model(resnet50_model,
                                             device_name,
                                             epochs=30,
                                             lr=0.001,
-                                            name=MODEL_NAME)
+                                            name=MODEL_NAME,
+                                            freeze_bn_stats=True)
 
 # ------------ Evaluate Model ------------
 evaluate_utils.plot_training_curves(history,
