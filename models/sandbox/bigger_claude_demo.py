@@ -141,7 +141,7 @@ for image, label in tqdm(flat_dataset, desc="Evaluating", unit=" images"):
             post_vlm_correct += 1
         total_evaluated += 1
 
-    # only do 100 transactions as a test
+    # only do 200 transactions as a test
     i = i+1
     if (i>200):
         break
@@ -150,6 +150,7 @@ baseline_acc = baseline_correct / total_evaluated
 post_vlm_acc = post_vlm_correct / total_evaluated
 delta = post_vlm_acc - baseline_acc
 
+print(f"------- VLM Rescue Experiment -------")
 print(f"\nEvaluated: {total_evaluated} images")
 print(f"VLM rescue calls: {vlm_calls} ({vlm_calls/total_evaluated:.1%} of images)")
 print(f"Baseline ResNet top-1: {baseline_acc:.3%} ({baseline_correct}/{total_evaluated})")
