@@ -15,6 +15,7 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs) # decay the learning rate with cosine annealing
     scaler = torch.amp.GradScaler(enabled=(device_name == 'cuda'))  # only enable if running on CUDA
     # ^ the scaler stores numbers in 16 bit instead of 32 bit and dramatically scales up the training time
+    use_amp = (device_name == 'cuda')  # autocast on MPS causes CPU fallbacks / severe slowdowns, gate to CUDA only
 
     print(f"\nTraining {name} for {epochs} epochs...")
     start_time = time.time()
@@ -45,10 +46,12 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
         top5_correct = 0
         total = 0
 
-        for images, labels in train_loader:
+        for i, (images, labels) in enumerate(train_loader):
+            if i % 50 == 0:
+                print(f"    train batch {i}/{len(train_loader)}", flush=True)
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
-            with torch.amp.autocast(device_type=device_name):
+            with torch.amp.autocast(device_type=device_name, enabled=use_amp):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
             scaler.scale(loss).backward()
@@ -74,9 +77,11 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
         total = 0
 
         with torch.no_grad():
-            for images, labels in val_loader:
+            for i, (images, labels) in enumerate(val_loader):
+                if i % 50 == 0:
+                    print(f"    val batch {i}/{len(val_loader)}", flush=True)
                 images, labels = images.to(device), labels.to(device)
-                with torch.amp.autocast(device_type=device_name):
+                with torch.amp.autocast(device_type=device_name, enabled=use_amp):
                     outputs = model(images)
                     loss = criterion(outputs, labels)
                 val_loss += loss.item()
