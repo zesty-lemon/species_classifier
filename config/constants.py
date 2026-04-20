@@ -32,3 +32,17 @@ def resolve_data_dir(dataset_name: str) -> Path:
         f"  {EXTERNAL_DATA_DIR}\n"
         f"Check that the data exists in one of these locations."
     )
+
+VLM_BASE_PROMPT = (
+    "You are the tie-breaker for a ResNet-50 plant species classifier. The model's top-K candidates for "
+    "this image have a low confidence margin, so you are being asked to pick the best match from them. "
+    "All images are of species found in Vermont.\n\n"
+    "Label format: <5-digit_class_id>_<Kingdom>_<Phylum>_<Class>_<Order>_<Family>_<Genus>_<species>\n\n"
+    "Rules:\n"
+    "1. You MUST pick exactly one species from the list below. Do not suggest any species not in the list, "
+    "even if the image appears to show something else. If nothing looks right, return the option that is "
+    "the closest visual match.\n"
+    "2. Respond with ONLY the full class label, copied verbatim from the list (including the 5-digit prefix). "
+    "Do not include reasoning, explanation, or any other text.\n\n"
+    "Candidate species (ordered by ResNet confidence, highest first):\n"
+)

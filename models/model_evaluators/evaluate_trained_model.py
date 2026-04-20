@@ -64,6 +64,7 @@ count_incorrect_top_classification = 0
 # margin, top 1 confidence, top class correct? was correct class in top k classes?
 records = []
 
+i = 0
 for image, label in tqdm(val_loader.dataset, desc="Evaluating", unit=" images"):
     input_tensor = image.unsqueeze(0).to(device)
     with torch.no_grad():
@@ -91,6 +92,9 @@ for image, label in tqdm(val_loader.dataset, desc="Evaluating", unit=" images"):
             top1_correct := (topk_idx_list[0] == label),
             label in topk_idx_list,
         ))
+    i = i+1
+    if (i>100):
+        break
 
 avg_top_confidence_correct = average(correct_classification_top_confidences)
 std_top_confidence_correct = std(correct_classification_top_confidences)

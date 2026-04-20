@@ -30,23 +30,17 @@ species_probs = [0.3214,
 # todo: include gps coordinates or maybe location
 # annotations = read_image_annotations_from_file(dataset_name=DATASET_USED)
 
-possible_species = []
-
-for i in range(0, len(species_top_5_classes)):
-    species = species_top_5_classes[i]
-    pretty_species_name = species[species.find('_') + 1:] # strip the species name
-    pretty_species_name = pretty_species_name.replace("_", " ")
-    possible_species.append(f"species name: \"{pretty_species_name}\" species confidence: {species_probs[i]}")
-
-print(possible_species)
 
 prompt = ("You are the final layer of an image classification architecture. A resnet50 model has examined an image"
           "and identified the top possible classes and their probabilities. However - the model has a low margin"
           "between these classes. It is your job to examine the image, and decide which of the top classes"
           "best fits the image. The classes are the names of the possible species. All images are of species"
-          "found in Vermont. Here are the potential top classes and their confidences:")
+          "found in Vermont. The syntax for the species names is <5-digit_class_id>_<Kingdom>_<Phylum>_<Class>_<Order>_<Family>_<Genus>_<species>"
+          "I want your output to be the full class label. I want you to pick the class (species) that best describes the image"
+          "and give me the full class label in your output. "
+          "Here are the potential top classes and their confidences: ")
 
-prompt = prompt + ", ".join(possible_species)
+prompt = prompt + ", ".join(species_top_5_classes)
 
 message = client.messages.create(
     model="claude-opus-4-7",
@@ -71,6 +65,13 @@ message = client.messages.create(
         }
     ],
 )
+
+vlm_picked_class = ""
+for block in message.content:
+    if block.type == "text":
+        print(block.text)
+        vlm_picked_class = block.text
+print(f"VLM Picked Class: {vlm_picked_class}")
 
 for block in message.content:
     if block.type == "text":
