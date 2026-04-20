@@ -77,5 +77,3 @@ for block in message.content:
     if block.type == "text":
         print(block.text)
 
-
-# todo: include location data (!!!)

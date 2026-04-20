@@ -1,8 +1,18 @@
 """
-Take a model that has already been trained and asses its performance
+VLM Rescue Experiment
+
+We use resnet50 to get the classification, but if it is not confident we use a VLM layer to fine-tune the
+prediction
+
+We go through all images in valdiation set
+We take an image, run it through the model, and get back the top 5 predicted classes
+If the margin (the difference in confidence between the top 2 classes) is low,
+the model is not confident in its classification. If the model is not confident,
+we send the image and the top 5 class labels to the VLM and let the VLM decide which should be the top class.
 """
 import anthropic
 import torch
+from scipy.stats import binomtest
 from tqdm import tqdm
 from dotenv import load_dotenv
 load_dotenv() #loads the api key from .env file
@@ -41,6 +51,7 @@ def get_message(encoded_image_data, final_prompt):
     return client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1000,
+        temperature=0, # used for sonnet to ensure deterministic output, REMOVE for opus
         messages=[
             {
                 "role": "user",
@@ -75,8 +86,10 @@ trained_model = trained_model.to(device)
 trained_model.eval()
 
 
-baseline_correct = 0
-post_vlm_correct = 0
+both_correct = 0
+baseline_only_correct = 0  # VLM hurt: ResNet had it, VLM overruled wrongly
+vlm_only_correct = 0  # VLM helped: ResNet missed, VLM rescued
+both_wrong = 0
 vlm_calls = 0
 total_evaluated = 0
 
@@ -135,10 +148,15 @@ for image, label in tqdm(flat_dataset, desc="Evaluating", unit=" images"):
 
         post_vlm_top1_correct = (topk_idx_list[0] == label)
 
-        if baseline_top1_correct:
-            baseline_correct += 1
-        if post_vlm_top1_correct:
-            post_vlm_correct += 1
+        if baseline_top1_correct and post_vlm_top1_correct:
+            both_correct += 1
+        elif baseline_top1_correct and not post_vlm_top1_correct:
+            baseline_only_correct += 1
+        elif not baseline_top1_correct and post_vlm_top1_correct:
+            vlm_only_correct += 1
+        else:
+            both_wrong += 1
+
         total_evaluated += 1
 
     # only do 200 transactions as a test
@@ -146,14 +164,34 @@ for image, label in tqdm(flat_dataset, desc="Evaluating", unit=" images"):
     if (i>200):
         break
 
+baseline_correct = both_correct + baseline_only_correct
+post_vlm_correct = both_correct + vlm_only_correct
 baseline_acc = baseline_correct / total_evaluated
 post_vlm_acc = post_vlm_correct / total_evaluated
 delta = post_vlm_acc - baseline_acc
 
+# McNemar's exact test: under H0 ("no effect") each discordant pair is 50/50.
+# Compare "VLM helped" count vs total discordant pairs against Binomial(0.5).
+discordant = baseline_only_correct + vlm_only_correct
+if discordant > 0:
+    result = binomtest(vlm_only_correct, n=discordant, p=0.5, alternative="two-sided")
+    p_value = result.pvalue
+else:
+    p_value = 1.0
+
 print(f"------- VLM Rescue Experiment -------")
-print(f"\nEvaluated: {total_evaluated} images")
-print(f"VLM rescue calls: {vlm_calls} ({vlm_calls/total_evaluated:.1%} of images)")
-print(f"Baseline ResNet top-1: {baseline_acc:.3%} ({baseline_correct}/{total_evaluated})")
+print(f"\nEvaluated: {total_evaluated} images, VLM called on {vlm_calls} ({vlm_calls / total_evaluated:.1%})")
+print(f"\nPaired outcome breakdown:")
+print(f"  Both correct:           {both_correct}")
+print(f"  Baseline only correct:  {baseline_only_correct}   (VLM hurt)")
+print(f"  VLM only correct:       {vlm_only_correct}   (VLM helped)")
+print(f"  Both wrong:             {both_wrong}")
+print(f"\nBaseline ResNet top-1: {baseline_acc:.3%} ({baseline_correct}/{total_evaluated})")
 print(f"Post-VLM top-1:        {post_vlm_acc:.3%} ({post_vlm_correct}/{total_evaluated})")
 print(f"Delta:                 {delta:+.3%}")
-
+print(f"\nMcNemar's test p-value: {p_value:.4f}")
+if p_value < 0.05:
+    direction = "significantly improves" if vlm_only_correct > baseline_only_correct else "significantly hurts"
+    print(f"  → VLM rescue {direction} accuracy (p < 0.05)")
+else:
+    print(f"  → No significant difference (p ≥ 0.05)")
