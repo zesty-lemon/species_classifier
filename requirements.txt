@@ -5,3 +5,4 @@ tqdm~=4.67.1
 matplotlib~=3.10.0
 numpy~=2.2.2
 scikit-learn~=1.6.0
+python-dotenv~=1.0.1

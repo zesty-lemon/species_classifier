@@ -1,6 +1,7 @@
 """
 Take a model that has already been trained and asses its performance
 """
+import numpy as np
 import torch
 from PIL import Image
 from numpy import average, std, median, percentile
@@ -15,6 +16,7 @@ from model_utils.model_utils import get_trained_model, persist_trained_model
 MODEL_NAME = "ResNet50 Scratch Trained"
 MODEL_PATH = "/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/species_classifier/models/trained_models/ResNet50_Scratch_Trained/2021_train/ResNet50_Scratch_Trained_model.joblib"
 DATASET_USED = c.FULL_DATASET # Need to leave this even though it isn't being used, need it for category indexes
+TOP_K = 5
 
 # ------------ Dataset Setup ------------
 CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(DATASET_USED)
@@ -41,12 +43,12 @@ input_tensor = val_transform(image).unsqueeze(0).to(device)
 with torch.no_grad():
     logits = trained_model(input_tensor)
     probs = torch.softmax(logits, dim=1)
-    top5_probs, top5_idx = probs.topk(5, dim=1)
+    topk_probs, topk_idx = probs.topk(TOP_K, dim=1)
 
 label_to_category = val_loader.dataset.label_to_category
 
 print(f"\nPredictions for {IMAGE_PATH}:")
-for rank, (idx, prob) in enumerate(zip(top5_idx[0].tolist(), top5_probs[0].tolist()), start=1):
+for rank, (idx, prob) in enumerate(zip(topk_idx[0].tolist(), topk_probs[0].tolist()), start=1):
     print(f"  {rank}. {label_to_category[idx]} — {prob * 100:.2f}%")
 
 correct_classification_top_confidences = []
@@ -54,30 +56,41 @@ incorrect_classification_top_confidences = []
 correct_classification_margins = []
 incorrect_classification_margins = []
 
-# count of times top classification was correct but image was in top 5
-count_incorrect_class_but_in_top_5 = 0
+# count of times top classification was correct but image was in top K
+count_incorrect_class_but_in_top_k = 0
 count_incorrect_top_classification = 0
+
+# store per-image stats
+# margin, top 1 confidence, top class correct? was correct class in top k classes?
+records = []
 
 for image, label in tqdm(val_loader.dataset, desc="Evaluating", unit=" images"):
     input_tensor = image.unsqueeze(0).to(device)
     with torch.no_grad():
         logits = trained_model(input_tensor)
         probs = torch.softmax(logits, dim=1)
-        top5_probs, top5_idx = probs.topk(5, dim=1)
+        topk_probs, topk_idx = probs.topk(TOP_K, dim=1)
 
-        top5_probs_list = top5_probs.tolist()[0]
-        top_5_idx_list = top5_idx.tolist()[0]
-        margin = top5_probs_list[0] - top5_probs_list[1]
+        topk_probs_list = topk_probs.tolist()[0]
+        topk_idx_list = topk_idx.tolist()[0]
+        margin = topk_probs_list[0] - topk_probs_list[1]
 
-        if top_5_idx_list[0] == label: # Classification is CORRECT if label matches top class label
-            correct_classification_top_confidences.append(top5_probs_list[0])
+        if topk_idx_list[0] == label: # Classification is CORRECT if label matches top class label
+            correct_classification_top_confidences.append(topk_probs_list[0])
             correct_classification_margins.append(margin)
         else:
-            incorrect_classification_top_confidences.append(top5_probs_list[0])
+            incorrect_classification_top_confidences.append(topk_probs_list[0])
             incorrect_classification_margins.append(margin)
             count_incorrect_top_classification = count_incorrect_top_classification + 1
-            if label in top_5_idx_list:
-                count_incorrect_class_but_in_top_5 = count_incorrect_class_but_in_top_5 + 1
+            if label in topk_idx_list:
+                count_incorrect_class_but_in_top_k = count_incorrect_class_but_in_top_k + 1
+
+        records.append((
+            margin,
+            topk_probs_list[0],
+            top1_correct := (topk_idx_list[0] == label),
+            label in topk_idx_list,
+        ))
 
 avg_top_confidence_correct = average(correct_classification_top_confidences)
 std_top_confidence_correct = std(correct_classification_top_confidences)
@@ -111,6 +124,7 @@ q25_margin_incorrect = percentile(incorrect_classification_margins, 25)
 q75_margin_incorrect = percentile(incorrect_classification_margins, 75)
 iqr_margin_incorrect = q75_margin_incorrect - q25_margin_incorrect
 
+print(f"Top {TOP_K} Stats")
 print(f"avg_top_confidence_correct: \n{avg_top_confidence_correct}")
 print(f"median_top_confidence_correct: \n{median_top_confidence_correct}")
 print(f"iqr_top_confidence_correct: \n{iqr_top_confidence_correct} (Q25={q25_top_confidence_correct}, Q75={q75_top_confidence_correct})")
@@ -124,7 +138,19 @@ print(f"avg_margin_incorrect: \n{avg_margin_incorrect}")
 print(f"median_margin_incorrect: \n{median_margin_incorrect}")
 print(f"iqr_margin_incorrect: \n{iqr_margin_incorrect} (Q25={q25_margin_incorrect}, Q75={q75_margin_incorrect})")
 print(f"Total Times Top Classification was Incorrect: \n{count_incorrect_top_classification}")
-print(f"Times Top Classification was Incorrect but True classification was in top 5: \n{count_incorrect_class_but_in_top_5}")
+print(f"Times Top Classification was Incorrect but True classification was in top {TOP_K}: \n{count_incorrect_class_but_in_top_k}")
+
+margins = np.array([r[0] for r in records])
+top1_correct = np.array([r[2] for r in records])
+total_wrong = (~top1_correct).sum()
+
+for t in np.arange(0.1, 1.0, 0.1):
+    send = margins < t
+    sent = send.sum()
+    sent_and_wrong = (send & ~top1_correct).sum()
+    precision = sent_and_wrong / sent if sent else 0
+    recall = sent_and_wrong / total_wrong
+    print(f"t={t:.2f}  sent={sent:5d}  precision={precision:.3f}  recall={recall:.3f}")
 
     # Classify image and get top 5
     #1. Check if true classification is in top-5
@@ -148,3 +174,5 @@ print(f"Times Top Classification was Incorrect but True classification was in to
 # if the VLM decides to, and then return the same top5 tensor, and let the external method check the classification.
 
 # What if we LOOK at top 10 for the VLM rescue, but still only return the top5? That might work
+
+# parameterized return of top 5
