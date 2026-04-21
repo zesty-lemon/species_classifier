@@ -3,7 +3,7 @@ import torch.nn as nn
 import time
 
 
-def train_model(model, train_loader, val_loader, device, device_name, epochs=50, lr=0.01, name="Model",
+def train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model",
                 patience=5, min_delta=1e-4):
     """
     Generic training loop with validation. Returns all metrics for comparison.
