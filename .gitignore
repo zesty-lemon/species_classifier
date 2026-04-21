@@ -219,3 +219,7 @@ CLAUDE.md
 !/data/ReadMe.txt
 
 !/data/state_boundary_files/
+
+#
+*.pth
+*.pt
