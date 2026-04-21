@@ -3,7 +3,7 @@ import torch.nn as nn
 import time
 
 
-def train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model",
+def train_model(model, train_loader, val_loader, device, device_name, epochs=50, lr=0.01, name="Model",
                 patience=5, min_delta=1e-4):
     """
     Generic training loop with validation. Returns all metrics for comparison.
@@ -12,7 +12,9 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, momentum=0.9)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs) # decay the learning rate with cosine annealing
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs) # decay the learning rate with cosine annealing
+    # Drops the learning rate to its minimum by epoch 30, regardless of the max epochs
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30)
     scaler = torch.amp.GradScaler(enabled=(device_name == 'cuda'))  # only enable if running on CUDA
     # ^ the scaler stores numbers in 16 bit instead of 32 bit and dramatically scales up the training time
 
