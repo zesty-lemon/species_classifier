@@ -44,7 +44,8 @@ def get_test_transfer_transforms() -> Tuple[transforms.Compose, transforms.Compo
 def load_vermont_plant_data(dataset_name,
                             data_path,
                             device_name,
-                            batch_size=128) -> Tuple[DataLoader, DataLoader, int]:
+                            batch_size=32) -> Tuple[DataLoader, DataLoader, int]:
+                            # batch_size=128) -> Tuple[DataLoader, DataLoader, int]:
 
     print("------ BEGIN Loading Data ------")
     VAL_DATASET_NAME = c.VAL_DATASET
