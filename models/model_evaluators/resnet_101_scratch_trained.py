@@ -7,7 +7,7 @@ from models.model_utils import model_utils, train_utils
 
 # ------------ Initial Configuration ------------
 MODEL_NAME = "ResNet101 Scratch Trained"
-DATASET_USED = c.MINI_DATASET
+DATASET_USED = c.FULL_DATASET
 
 # ------------ Dataset Setup ------------
 CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(DATASET_USED)
@@ -16,7 +16,7 @@ CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(DATASET_
 train_loader, val_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_name=CURRENT_DATASET_NAME,
                                                                                   data_path=DATA_PATH,
                                                                                   device_name=device_name,
-                                                                                  batch_size=128)
+                                                                                  batch_size=32)
 
 # ------------ Initialize Model ------------
 resnet101_model = resnet_101_scratch_trained.ResNet101_Model(num_classes=num_plant_classes)
