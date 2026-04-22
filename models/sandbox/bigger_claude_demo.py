@@ -26,8 +26,8 @@ from config import constants as c
 from model_utils.model_utils import get_trained_model, persist_trained_model
 
 # ------------ Initial Configuration ------------
-MODEL_NAME = "ResNet50 Scratch Trained"
-MODEL_PATH = "/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/species_classifier/models/trained_models/ResNet50_Scratch_Trained/2021_train/ResNet50_Scratch_Trained_model.joblib"
+MODEL_NAME = "ResNet101 Scratch Trained"
+MODEL_PATH = "/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/species_classifier/models/trained_models/resnet_101/ResNet101_Scratch_Trained_model.joblib"
 DATASET_USED = c.FULL_DATASET # Need to leave this even though it isn't being used, need it for category indexes
 TOP_K = 5
 MARGIN_THRESHOLD = 0.5  # Only send to VLM when ResNet's margin < this value
@@ -50,7 +50,7 @@ def find_claude_pick(response_text, candidate_names):
 def get_message(encoded_image_data, final_prompt):
     return client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1000,
+        max_tokens=1500,
         temperature=0, # used for sonnet to ensure deterministic output, REMOVE for opus
         messages=[
             {
