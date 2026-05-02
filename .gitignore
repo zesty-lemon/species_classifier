@@ -228,3 +228,4 @@ CLAUDE.md
 #
 *.pth
 *.pt
+*.md

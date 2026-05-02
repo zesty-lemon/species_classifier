@@ -1,0 +1,13 @@
+------- VLM Rescue Experiment -------
+
+Evaluated: 9470 images, VLM called on 3017 (31.9%)
+0.5 Threshold
+Paired outcome breakdown:
+  Both correct:           6227
+  Baseline only correct:  536   (VLM hurt)
+  VLM only correct:       152   (VLM helped)
+  Both wrong:             2555
+
+Baseline ResNet top-1: 71.415% (6763/9470)
+Post-VLM top-1:        67.360% (6379/9470)
+Delta:                 -4.055%

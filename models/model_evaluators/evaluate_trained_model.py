@@ -10,7 +10,7 @@ from tqdm import tqdm
 from config.device_config import device, device_name
 import utils.data_load_and_config_util as data_config
 from config import constants as c
-from model_utils.model_utils import get_trained_model, persist_trained_model
+from model_utils.model_utils import get_cuda_trained_model, persist_trained_model
 
 # ------------ Initial Configuration ------------
 MODEL_NAME = "ResNet50 Scratch Trained"
@@ -27,7 +27,7 @@ _, val_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_n
                                                                                   device_name=device_name,
                                                                                   batch_size=128)
 
-trained_model = get_trained_model(MODEL_PATH)
+trained_model = get_cuda_trained_model(MODEL_PATH)
 trained_model = trained_model.to(device)
 trained_model.eval()
 

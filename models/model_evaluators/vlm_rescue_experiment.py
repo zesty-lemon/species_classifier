@@ -27,10 +27,10 @@ from model_utils.model_utils import get_cuda_trained_model
 
 # ------------ Initial Configuration ------------
 MODEL_NAME = "ResNet101 Scratch Trained"
-MODEL_PATH = "/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/species_classifier/models/trained_models/resnet_101/ResNet101_Scratch_Trained_model.joblib"
+MODEL_PATH = str(c.PROJECT_ROOT / "models" / "trained_models" / "resnet_101" / "ResNet101_Scratch_Trained_model.joblib")
 DATASET_USED = c.FULL_DATASET # Need to leave this even though it isn't being used, need it for category indexes
 TOP_K = 5
-MARGIN_THRESHOLD = 0.1  # Only send to VLM when ResNet's margin < this value
+MARGIN_THRESHOLD = 0.5  # Only send to VLM when ResNet's margin < this value
 
 
 def find_claude_pick(response_text, candidate_names):
@@ -47,11 +47,12 @@ def find_claude_pick(response_text, candidate_names):
     return None
 
 
-def get_message(encoded_image_data, final_prompt):
+def get_message(encoded_image_data, candidates_text):
     return client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1500,
+        max_tokens=500,
         temperature=0, # used for sonnet to ensure deterministic output, REMOVE for opus
+        system=c.VLM_SYSTEM_PROMPT,
         messages=[
             {
                 "role": "user",
@@ -66,7 +67,7 @@ def get_message(encoded_image_data, final_prompt):
                     },
                     {
                         "type": "text",
-                        "text": final_prompt,
+                        "text": candidates_text,
                     },
                 ],
             }
@@ -129,8 +130,8 @@ for image, label in tqdm(flat_dataset, desc="Evaluating", unit=" images"):
                 f"- {name} (confidence: {prob:.3f})"
                 for name, prob in zip(species_names, topk_probs_list)
             ]
-            prompt = c.VLM_BASE_PROMPT + "\n".join(species_lines)
-            message = get_message(image_data, prompt)
+            candidates_text = c.VLM_CANDIDATES_HEADER + "\n".join(species_lines)
+            message = get_message(image_data, candidates_text)
             vlm_calls += 1
 
             vlm_picked_class = ""
@@ -158,11 +159,6 @@ for image, label in tqdm(flat_dataset, desc="Evaluating", unit=" images"):
             both_wrong += 1
 
         total_evaluated += 1
-
-    # only do 200 transactions as a test
-    # i = i+1
-    # if (i>200):
-    #     break
 
 baseline_correct = both_correct + baseline_only_correct
 post_vlm_correct = both_correct + vlm_only_correct
