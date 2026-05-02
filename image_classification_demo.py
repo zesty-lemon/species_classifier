@@ -97,9 +97,14 @@ while True:
         margin = topk_probs_list[0] - topk_probs_list[1]
 
         baseline_top1_correct = (topk_idx_list[0] == label)
-        print(f"True Category: {true_category}")
-        print(f"Top-1 prediction: {label_to_category[topk_idx_list[0]]} (correct: {baseline_top1_correct})")
-        print("Top 5 Predictions:")
+
+        clear()
+        print("============ Vermont Species Classifier ============")
+        print("---------------Classification Report----------------")
+        print(f"True Species.        : {true_category}")
+        print(f"Predicted Species    : {label_to_category[topk_idx_list[0]]}")
+        print(f"Predicted Correctly? : {baseline_top1_correct}")
+        print("----------------Top 5 Predictions-------------------")
         for i in range (0,len(topk_idx_list)):
             print(f"    Prediction: {label_to_category[topk_idx_list[i]]} (Confidence: {topk_probs_list[i]:.2%})")
 
