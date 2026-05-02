@@ -34,9 +34,7 @@ from models.model_utils.model_utils import get_cuda_trained_model
 from utils.data_load_and_config_util import get_test_transfer_transforms
 
 def clear():
-    # 'nt' is for Windows, 'posix' is for Linux/macOS
-    os.system('cls' if os.name == 'nt' else 'clear')
-
+    print("\033[H\033[2J\033[3J", end="")
 # ------------ Initial Configuration ------------
 MODEL_NAME = "ResNet101 Scratch Trained"
 MODEL_PATH = str(c.PROJECT_ROOT / "models" / "trained_models" / "resnet_101" / "ResNet101_Scratch_Trained_model.joblib")
@@ -63,38 +61,53 @@ flat_dataset = val_loader.dataset
 base_dataset = flat_dataset.base_dataset
 
 clear()
-
+def print_header():
+    print("============ Vermont Species Classifier ============")
+    print("Model: Resnet101 (Scratch Trained)")
+    print("Drag in image to be classified")
 # image_path = '/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/data/2021_valid/08207_Plantae_Tracheophyta_Magnoliopsida_Fagales_Fagaceae_Quercus_velutina/d574da4c-7565-4153-a25a-b2c5117807b1.jpg'
-print("============ Vermont Species Classifier ============")
-print("Model: Resnet101 (Scratch Trained)")
-print("Drag in image to be classified")
-image_path = input("Drag Image Here: ")
-image_path = image_path.replace(" ", "")
 
-image = Image.open(image_path).convert("RGB")
+while True:
+    print_header()
+    image_path = input("Drag Image Here: ")
+    image_path = image_path.replace(" ", "")
 
-_, val_transform = get_test_transfer_transforms()
-input_tensor = val_transform(image).unsqueeze(0).to(device)
+    if image_path.lower() == 'quit':
+        break
+
+    image = Image.open(image_path).convert("RGB")
+
+    _, val_transform = get_test_transfer_transforms()
+    input_tensor = val_transform(image).unsqueeze(0).to(device)
 
 
-# Get the true category for the image
-category_to_label = {name: lbl for lbl, name in label_to_category.items()}
-true_category = os.path.basename(os.path.dirname(image_path))
-label = category_to_label[true_category]
+    # Get the true category for the image
+    category_to_label = {name: lbl for lbl, name in label_to_category.items()}
+    true_category = os.path.basename(os.path.dirname(image_path))
+    label = category_to_label[true_category]
 
-with torch.no_grad():
-    logits = trained_model(input_tensor)
-    probs = torch.softmax(logits, dim=1)
-    topk_probs, topk_idx = probs.topk(TOP_K, dim=1)
+    with torch.no_grad():
+        logits = trained_model(input_tensor)
+        probs = torch.softmax(logits, dim=1)
+        topk_probs, topk_idx = probs.topk(TOP_K, dim=1)
 
-    # probabilities come back as tensors, convert to indexes
-    topk_probs_list = topk_probs.tolist()[0]
-    topk_idx_list = topk_idx.tolist()[0]
-    margin = topk_probs_list[0] - topk_probs_list[1]
+        # probabilities come back as tensors, convert to indexes
+        topk_probs_list = topk_probs.tolist()[0]
+        topk_idx_list = topk_idx.tolist()[0]
+        margin = topk_probs_list[0] - topk_probs_list[1]
 
-    baseline_top1_correct = (topk_idx_list[0] == label)
-    print(f"True Category: {true_category}")
-    print(f"Top-1 prediction: {label_to_category[topk_idx_list[0]]} (correct: {baseline_top1_correct})")
-    print("Top 5 Predictions:")
-    for i in range (0,len(topk_idx_list)):
-        print(f"    Prediction: {label_to_category[topk_idx_list[i]]} (Confidence: {topk_probs_list[i]:.2%})")
+        baseline_top1_correct = (topk_idx_list[0] == label)
+        print(f"True Category: {true_category}")
+        print(f"Top-1 prediction: {label_to_category[topk_idx_list[0]]} (correct: {baseline_top1_correct})")
+        print("Top 5 Predictions:")
+        for i in range (0,len(topk_idx_list)):
+            print(f"    Prediction: {label_to_category[topk_idx_list[i]]} (Confidence: {topk_probs_list[i]:.2%})")
+
+        print("====================================================")
+        user_input = input("Enter to continue, Q to quit: ")
+        user_input = user_input.replace(" ", "")
+
+        if user_input.lower() == 'q':
+            break
+        else:
+            clear()
