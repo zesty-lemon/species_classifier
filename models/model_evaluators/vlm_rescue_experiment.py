@@ -23,14 +23,14 @@ import os
 from config.device_config import device, device_name
 import utils.data_load_and_config_util as data_config
 from config import constants as c
-from model_utils.model_utils import get_trained_model, persist_trained_model
+from model_utils.model_utils import get_cuda_trained_model
 
 # ------------ Initial Configuration ------------
 MODEL_NAME = "ResNet101 Scratch Trained"
 MODEL_PATH = "/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/species_classifier/models/trained_models/resnet_101/ResNet101_Scratch_Trained_model.joblib"
 DATASET_USED = c.FULL_DATASET # Need to leave this even though it isn't being used, need it for category indexes
 TOP_K = 5
-MARGIN_THRESHOLD = 0.5  # Only send to VLM when ResNet's margin < this value
+MARGIN_THRESHOLD = 0.1  # Only send to VLM when ResNet's margin < this value
 
 
 def find_claude_pick(response_text, candidate_names):
@@ -81,7 +81,7 @@ _, val_loader, num_plant_classes = data_config.load_vermont_plant_data(dataset_n
                                                                                   device_name=device_name,
                                                                                   batch_size=128)
 
-trained_model = get_trained_model(MODEL_PATH)
+trained_model = get_cuda_trained_model(MODEL_PATH)
 trained_model = trained_model.to(device)
 trained_model.eval()
 
@@ -160,9 +160,9 @@ for image, label in tqdm(flat_dataset, desc="Evaluating", unit=" images"):
         total_evaluated += 1
 
     # only do 200 transactions as a test
-    i = i+1
-    if (i>200):
-        break
+    # i = i+1
+    # if (i>200):
+    #     break
 
 baseline_correct = both_correct + baseline_only_correct
 post_vlm_correct = both_correct + vlm_only_correct
