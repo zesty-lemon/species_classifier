@@ -1,8 +1,6 @@
 import os
 from config import constants as c
-import torch
 from matplotlib import pyplot as plt
-from sklearn.metrics import classification_report
 """
 This file contains code to evaluate model performance
 Plotting charts
@@ -58,30 +56,6 @@ def generate_performance_report(model,
 
     num_epochs = len(history['train_loss'])
 
-    # ---- Run inference on val set to collect predictions ----
-    print(f"Running inference on validation set for {name} report...")
-    model.eval()
-    all_labels = []
-    all_preds = []
-
-    with torch.no_grad():
-        for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)
-            with torch.amp.autocast(device_type=device_name):
-                outputs = model(images)
-            _, predicted = torch.max(outputs, 1)
-            all_labels.extend(labels.cpu().tolist())
-            all_preds.extend(predicted.cpu().tolist())
-
-    # Build class name mapping if the dataset has one (FlatDataset provides label_to_category)
-    dataset = val_loader.dataset
-    target_names = None
-    if hasattr(dataset, 'label_to_category'):
-        label_ids = sorted(dataset.label_to_category.keys())
-        target_names = [str(dataset.label_to_category[i]) for i in label_ids]
-
-    report = classification_report(all_labels, all_preds, target_names=target_names, zero_division=0)
-
     # ---- Summary stats ----
     best_val_acc = max(history['val_acc'])
     best_val_acc_epoch = history['val_acc'].index(best_val_acc) + 1
@@ -115,8 +89,5 @@ def generate_performance_report(model,
             lr = history['learning_rate'][i]
             current_iteration_status = f"  Epoch [{i + 1}/{num_epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | Train Top-5: {train_top5_acc:.2f}% | Val Loss: {epoch_val_loss:.4f} | Val Acc: {epoch_val_acc:.2f}% | Val Top-5: {epoch_val_top5_acc:.2f}% | LR: {lr}"
             f.write(f"{current_iteration_status}\n")
-
-        f.write(f"\n----- Per-Class Classification Report -----\n")
-        f.write(str(report))
 
     print(f"Saved performance report to: {report_path}")

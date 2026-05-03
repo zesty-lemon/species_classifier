@@ -6,8 +6,8 @@ from utils import evaluate_utils
 from models.model_utils import model_utils, train_utils
 
 # ------------ Initial Configuration ------------
-MODEL_NAME = "ResNet50 Scratch Trained"
-DATASET_USED = c.MINI_DATASET
+MODEL_NAME = "ResNet50 Scratch Trained Augmentation Early Stopping"
+DATASET_USED = c.FULL_DATASET
 
 # ------------ Dataset Setup ------------
 CURRENT_DATASET_NAME, DATA_PATH = data_config.get_dataset_name_and_path(DATASET_USED)
@@ -27,8 +27,8 @@ history, duration = train_utils.train_model(resnet50_model,
                                             val_loader,
                                             device,
                                             device_name,
-                                            epochs=1,
-                                            lr=0.01,
+                                            epochs=30,
+                                            lr=0.05,
                                             name=MODEL_NAME)
 
 # ------------ Evaluate Model ------------

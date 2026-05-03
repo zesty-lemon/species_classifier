@@ -4,7 +4,7 @@ import time
 
 
 def train_model(model, train_loader, val_loader, device, device_name, epochs=5, lr=0.01, name="Model",
-                patience=5, min_delta=1e-4):
+                patience=5, min_delta=1e-4, freeze_bn_stats=False):
     """
     Generic training loop with validation. Returns all metrics for comparison.
     """
@@ -17,6 +17,7 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30)
     scaler = torch.amp.GradScaler(enabled=(device_name == 'cuda'))  # only enable if running on CUDA
     # ^ the scaler stores numbers in 16 bit instead of 32 bit and dramatically scales up the training time
+    use_amp = (device_name == 'cuda')  # autocast on MPS causes CPU fallbacks / severe slowdowns, gate to CUDA only
 
     print(f"\nTraining {name} for {epochs} epochs...")
     start_time = time.time()
@@ -37,15 +38,22 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
     for epoch in range(epochs):
         # --- Training Phase ---
         model.train()
+        if freeze_bn_stats:
+            # Keep running_mean/running_var fixed on frozen BN layers (pretrained backbone)
+            for m in model.modules():
+                if isinstance(m, nn.BatchNorm2d) and not m.weight.requires_grad:
+                    m.eval()
         running_loss = 0.0
         correct = 0
         top5_correct = 0
         total = 0
 
-        for images, labels in train_loader:
+        for i, (images, labels) in enumerate(train_loader):
+            if i % 50 == 0:
+                print(f"    train batch {i}/{len(train_loader)}", flush=True)
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
-            with torch.amp.autocast(device_type=device_name):
+            with torch.amp.autocast(device_type=device_name, enabled=use_amp):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
             scaler.scale(loss).backward()
@@ -71,9 +79,11 @@ def train_model(model, train_loader, val_loader, device, device_name, epochs=5, 
         total = 0
 
         with torch.no_grad():
-            for images, labels in val_loader:
+            for i, (images, labels) in enumerate(val_loader):
+                if i % 50 == 0:
+                    print(f"    val batch {i}/{len(val_loader)}", flush=True)
                 images, labels = images.to(device), labels.to(device)
-                with torch.amp.autocast(device_type=device_name):
+                with torch.amp.autocast(device_type=device_name, enabled=use_amp):
                     outputs = model(images)
                     loss = criterion(outputs, labels)
                 val_loss += loss.item()

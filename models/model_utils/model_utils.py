@@ -1,6 +1,8 @@
+import io
 import os
 
 import joblib
+import torch
 import torch.nn as nn
 
 from config import constants as c
@@ -23,11 +25,32 @@ def persist_trained_model(model: nn.Module, dataset_name: str, name: str = "Mode
     print("----- END Saving Model to Disk -----")
 
 
+#Use for models trained on mac
 def get_trained_model(path_to_model: str) -> nn.Module:
     """
-    
+
     :param path_to_model: Absolute filepath
     :return: Trained Model
     """
     trained_model = joblib.load(path_to_model)
+    return trained_model
+
+
+# use for models trained on PC
+def get_cuda_trained_model(path_to_model: str) -> nn.Module:
+    """
+    :param path_to_model: Absolute filepath
+    :return: Trained Model
+    """
+    # joblib.load doesn't expose map_location, so override the nested torch.load
+    # that fires inside pickled tensor storages. Lets CUDA-trained checkpoints
+    # load on machines without CUDA (e.g. MPS/CPU).
+    original_load_from_bytes = torch.storage._load_from_bytes
+    torch.storage._load_from_bytes = lambda b: torch.load(
+        io.BytesIO(b), map_location="cpu", weights_only=False
+    )
+    try:
+        trained_model = joblib.load(path_to_model)
+    finally:
+        torch.storage._load_from_bytes = original_load_from_bytes
     return trained_model

@@ -220,6 +220,12 @@ CLAUDE.md
 
 !/data/state_boundary_files/
 
+# CANNOT HAVE API KEYS ON GITHUB!!!
+/config/keys.py
+/models/trained_models/resnet_101/
+
+
 #
 *.pth
 *.pt
+*.md

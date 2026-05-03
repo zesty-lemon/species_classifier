@@ -1,3 +1,9 @@
+import os
+# Force any unsupported MPS op to raise instead of silently falling back to CPU.
+# Silent CPU fallbacks cause per-batch GPU<->CPU tensor shuttling that destroys throughput.
+# Must be set before `import torch`.
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "0"
+
 import numpy as np
 import torch
 
