@@ -65,7 +65,6 @@ def print_header():
     print("============ Vermont Species Classifier ============")
     print("Model: Resnet101 (Scratch Trained)")
     print("Drag in image to be classified")
-# image_path = '/Users/giles/Documents/Grad_School/Spring_2026/deep_learning/Project/data/2021_valid/08207_Plantae_Tracheophyta_Magnoliopsida_Fagales_Fagaceae_Quercus_velutina/d574da4c-7565-4153-a25a-b2c5117807b1.jpg'
 
 while True:
     print_header()
